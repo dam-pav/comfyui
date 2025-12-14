@@ -20,14 +20,13 @@ RUN git clone --depth=1 -b ${COMFYUI_BRANCH} ${COMFYUI_REPO} ComfyUI
 
 WORKDIR /opt/ComfyUI
 
-# Create a venv
+# Create and use venv
 RUN python -m venv /opt/ComfyUI/venv
-
 ENV VIRTUAL_ENV=/opt/ComfyUI/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
-# Install CUDA PyTorch & xformers
-RUN pip install --upgrade pip \
+# Install torch + xformers first (if you want to control CUDA version)
+RUN pip install --upgrade pip setuptools wheel \
  && pip install \
       "torch==2.5.1+cu121" \
       "torchvision==0.20.1+cu121" \
@@ -35,12 +34,12 @@ RUN pip install --upgrade pip \
       --extra-index-url https://download.pytorch.org/whl/cu121 \
  && pip install "xformers==0.0.28.post3"
 
-# Install ComfyUI core dependencies (no deps so we don't override torch/xformers)
-RUN pip install -r requirements.txt --no-deps
+# Then let ComfyUI requirements pull in everything else properly
+RUN pip install -r requirements.txt \
+ && pip cache purge
 
 # Extra deps for your video/manager-related custom nodes
 RUN pip install \
-      diffusers \
       av \
       imageio-ffmpeg \
       toml
