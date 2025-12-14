@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   comfyui:
-    image: ghcr.io/damjanp/comfyui:latest
+    image: ghcr.io/dam-pav/comfyui:latest
     container_name: comfyui
     gpus: all
 
