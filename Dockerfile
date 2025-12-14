@@ -35,10 +35,10 @@ RUN pip install --upgrade pip \
       --extra-index-url https://download.pytorch.org/whl/cu121 \
  && pip install "xformers==0.0.28.post3"
 
-# Install ComfyUI core dependencies only (no deps = no conflict with torch/xformers)
+# Install ComfyUI core dependencies (no deps so we don't override torch/xformers)
 RUN pip install -r requirements.txt --no-deps
 
-# Install your extra deps for custom nodes & manager
+# Extra deps for your video/manager-related custom nodes
 RUN pip install \
       diffusers \
       av \

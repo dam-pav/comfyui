@@ -2,24 +2,25 @@ version: "3.9"
 
 services:
   comfyui:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/damjanp/comfyui:latest
     container_name: comfyui
-
-    restart: unless-stopped
-
-    # ✅ Modern GPU flag for non-Swarm Docker / Portainer
     gpus: all
 
     environment:
-      # Optional ComfyUI flags as env var if you want to override
-      # e.g. add --cuda-device 0, --highvram etc.
-      # COMFY_ARGS: "--highvram"
-      # We'll wire this into the command below if you like later.
       TZ: Europe/Ljubljana
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
 
-    # Persist user data, custom nodes, models and IO
+    # Choose whichever GPU syntax matches your Docker version:
+    # For older setups (nvidia-container-runtime):
+    runtime: nvidia
+    # For newer Docker:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: ["gpu"]
+
     volumes:
       - /home/damjan/ComfyUI/ComfyUI/user:/opt/ComfyUI/user
       - /home/damjan/ComfyUI/ComfyUI/custom_nodes:/opt/ComfyUI/custom_nodes
@@ -30,5 +31,4 @@ services:
     ports:
       - "8188:8188"
 
-    # Still fine to keep this for older setups
-    runtime: nvidia
+    restart: unless-stopped
