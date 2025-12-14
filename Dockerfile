@@ -25,21 +25,27 @@ RUN python -m venv /opt/ComfyUI/venv
 ENV VIRTUAL_ENV=/opt/ComfyUI/venv
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
-# Install torch + xformers first (if you want to control CUDA version)
-RUN pip install --upgrade pip setuptools wheel \
- && pip install \
+# Upgrade pip tooling and install uv so ComfyUI-Manager can use it if it wants
+RUN /opt/ComfyUI/venv/bin/python -m pip install --upgrade pip setuptools wheel uv
+
+# Install torch + xformers first (CUDA 12.1 wheels)
+RUN /opt/ComfyUI/venv/bin/python -m pip install \
       "torch==2.5.1+cu121" \
       "torchvision==0.20.1+cu121" \
       "torchaudio==2.5.1+cu121" \
       --extra-index-url https://download.pytorch.org/whl/cu121 \
- && pip install "xformers==0.0.28.post3"
+ && /opt/ComfyUI/venv/bin/python -m pip install \
+      "xformers==0.0.28.post3"
 
-# Then let ComfyUI requirements pull in everything else properly
-RUN pip install -r requirements.txt \
- && pip cache purge
+# Base ComfyUI requirements
+RUN /opt/ComfyUI/venv/bin/python -m pip install -r requirements.txt \
+ && /opt/ComfyUI/venv/bin/python -m pip cache purge
 
-# Extra deps for your video/manager-related custom nodes
-RUN pip install \
+# Extra deps for your custom nodes (WanVideo, VideoHelperSuite, comfyui-manager)
+RUN /opt/ComfyUI/venv/bin/python -m pip install \
+      diffusers \
+      gitpython \
+      opencv-python-headless \
       av \
       imageio-ffmpeg \
       toml
