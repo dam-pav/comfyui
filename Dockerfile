@@ -50,6 +50,11 @@ RUN /opt/ComfyUI/venv/bin/python -m pip install \
       imageio-ffmpeg \
       toml
 
-EXPOSE 8188
+# Install ComfyUI-KJNodes Python dependencies (from upstream requirements.txt)
+ADD https://raw.githubusercontent.com/kijai/ComfyUI-KJNodes/main/requirements.txt \
+    /tmp/kjnodes-requirements.txt
 
-CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188"]
+RUN /opt/ComfyUI/venv/bin/python -m pip install --no-cache-dir \
+      -r /tmp/kjnodes-requirements.txt \
+ && rm /tmp/kjnodes-requirements.txt \
+ && /opt/ComfyUI/venv/bin/python -m pip cache purge
