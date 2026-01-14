@@ -1,34 +1,67 @@
+# Required environment variables:
+# COMFYUI_PATH=<master_folder>
+# COMFYUI_GPU_DEVICE_ID=<gpu_device_id>
+# COMFYUI_PORT=<port_number>
+
 version: "3.9"
 
 services:
-  comfyui:
+  comfyui_init_kjnodes:
+    image: alpine:3.20
+    container_name: comfyui_init_kjnodes
+    restart: "no"
+    volumes:
+      - ${COMFYUI_PATH}/custom_nodes:/custom_nodes
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        echo ">>> Installing ComfyUI-KJNodes"
+
+        apk add --no-cache git
+
+        if [ ! -d /custom_nodes/ComfyUI-KJNodes ]; then
+          git clone https://github.com/kijai/ComfyUI-KJNodes.git /custom_nodes/ComfyUI-KJNodes
+          echo ">>> KJNodes cloned"
+        else
+          echo ">>> KJNodes already present, updating"
+          cd /custom_nodes/ComfyUI-KJNodes
+          git pull --ff-only || true
+        fi
+
+        echo ">>> Init container finished"
+
+  comfyui_gpu${COMFYUI_GPU_DEVICE_ID}:
     image: ghcr.io/dam-pav/comfyui:latest
-    container_name: comfyui
+    container_name: comfyui_gpu${COMFYUI_GPU_DEVICE_ID}
     gpus: all
+    runtime: nvidia
+
+    depends_on:
+      comfyui_init_kjnodes:
+        condition: service_completed_successfully
 
     environment:
       TZ: Europe/Ljubljana
       NVIDIA_VISIBLE_DEVICES: "all"
       NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
 
-    # Choose whichever GPU syntax matches your Docker version:
-    # For older setups (nvidia-container-runtime):
-    runtime: nvidia
-    # For newer Docker:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities: ["gpu"]
+    command: ["python", "main.py", 
+              "--listen", "0.0.0.0", 
+              "--port", "8188", 
+              "--disable-async-offload",
+              "--cuda-device", "${COMFYUI_GPU_DEVICE_ID}"]
 
     volumes:
-      - /home/damjan/ComfyUI/ComfyUI/user:/opt/ComfyUI/user
-      - /home/damjan/ComfyUI/ComfyUI/custom_nodes:/opt/ComfyUI/custom_nodes
-      - /home/damjan/ComfyUI/ComfyUI/models:/opt/ComfyUI/models
-      - /home/damjan/ComfyUI/ComfyUI/input:/opt/ComfyUI/input
-      - /home/damjan/ComfyUI/ComfyUI/output:/opt/ComfyUI/output
+      - ${COMFYUI_PATH}/user:/opt/ComfyUI/user
+      - ${COMFYUI_PATH}/custom_nodes:/opt/ComfyUI/custom_nodes
+      - ${COMFYUI_PATH}/models:/opt/ComfyUI/models
+      - ${COMFYUI_PATH}/input:/opt/ComfyUI/input
+      - ${COMFYUI_PATH}/output:/opt/ComfyUI/output
 
     ports:
-      - "8188:8188"
+      - "${COMFYUI_PORT:-8188}:8188"
 
     restart: unless-stopped
