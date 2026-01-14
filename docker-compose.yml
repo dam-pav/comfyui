@@ -33,9 +33,9 @@ services:
 
         echo ">>> Init container finished"
 
-  comfyui_gpu${COMFYUI_GPU_DEVICE_ID}:
+  comfyui_gpu${COMFYUI_GPU_DEVICE_ID:-0}:
     image: ghcr.io/dam-pav/comfyui:latest
-    container_name: comfyui_gpu${COMFYUI_GPU_DEVICE_ID}
+    container_name: comfyui_gpu${COMFYUI_GPU_DEVICE_ID:-0}
     gpus: all
     runtime: nvidia
 
@@ -52,7 +52,7 @@ services:
               "--listen", "0.0.0.0", 
               "--port", "8188", 
               "--disable-async-offload",
-              "--cuda-device", "${COMFYUI_GPU_DEVICE_ID}"]
+              "--cuda-device", "${COMFYUI_GPU_DEVICE_ID:-0}"]
 
     volumes:
       - ${COMFYUI_PATH}/user:/opt/ComfyUI/user
