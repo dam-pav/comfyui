@@ -47,9 +47,9 @@ services:
       - device_ids: ["${COMFYUI_GPU_DEVICE_ID:-0}"]
         capabilities: ["gpu"]
 
-    depends_on:
-      comfyui_init_kjnodes:
-        condition: service_completed_successfully
+    # depends_on:
+    #   comfyui_init_kjnodes:
+    #     condition: service_completed_successfully
 
     environment:
       TZ: Europe/Ljubljana
