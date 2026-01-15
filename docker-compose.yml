@@ -3,10 +3,14 @@
 # COMFYUI_GPU_DEVICE_ID=<gpu_device_id>
 # COMFYUI_PORT=<port_number>
 
+# Optional environment variables
+# COMPOSE_PROFILES=kjnodes  # to enable KJNodes init container
+
 version: "3.9"
 
 services:
   comfyui_init_kjnodes:
+    profiles: [kjnodes]
     image: alpine:3.20
     container_name: comfyui_init_kjnodes
     restart: "no"
