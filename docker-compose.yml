@@ -1,9 +1,9 @@
 # Required environment variables:
 # COMFYUI_PATH=<master_folder>
-# COMFYUI_GPU_DEVICE_ID=<gpu_device_id>
-# COMFYUI_PORT=<port_number>
 
 # Optional environment variables
+# COMFYUI_GPU_DEVICE_ID=<gpu_device_id>
+# COMFYUI_PORT=<port_number>
 # COMPOSE_PROFILES=kjnodes  # to enable KJNodes init container
 
 version: "3.9"
