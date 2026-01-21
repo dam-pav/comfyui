@@ -23,31 +23,31 @@ jobs:
     env:
       IMAGE_NAME: comfyui
       UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI.git
-      UPSTREAM_BRANCH: master
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get upstream repo SHA
+      - name: Detect upstream default branch
         id: upstream
         run: |
           set -euo pipefail
 
-          if ! command -v git >/dev/null 2>&1; then
-            echo "ERROR: git is not installed on this runner"
-            exit 1
-          fi
+          REF=$(git ls-remote --symref "$UPSTREAM_REPO" HEAD | awk '/^ref:/ {print $2}')
+          BRANCH=${REF#refs/heads/}
 
-          UPSTREAM_SHA=$(git ls-remote "$UPSTREAM_REPO" "refs/heads/$UPSTREAM_BRANCH" | cut -f1)
+          SHA=$(git ls-remote "$UPSTREAM_REPO" "refs/heads/$BRANCH" | cut -f1)
 
-          if [ -z "$UPSTREAM_SHA" ]; then
+          if [ -z "$SHA" ]; then
             echo "ERROR: Failed to resolve upstream SHA"
             exit 1
           fi
 
-          echo "sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
-          echo "Upstream SHA: $UPSTREAM_SHA"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+          echo "Upstream branch: $BRANCH"
+          echo "Upstream SHA: $SHA"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
