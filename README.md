@@ -7,7 +7,7 @@ The parameters provide some level of flexibility; you are welcome to clone and m
 
 The compose file is meant to build separate parallel containers per each GPU.
 
-The compose definition contains a node extension init container as a bonus. If you want to run it be sure to define the COMPOSE_PROFILES environment variable. Enable the init container for one stack only. Since the volumes are shared, the one will update nodes for all your stacks.
+The compose definition contains a node extension init container as a bonus. If you want to run it be sure to define the COMPOSE_PROFILES environment variable. Enable the init container for one stack only. If you share the volumes between stacks, only one of them needs to run the init in order to update nodes for all your stacks.
 
 ## Deployment:
 - manual: 
