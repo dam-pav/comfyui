@@ -32,8 +32,21 @@ jobs:
       - name: Get upstream repo SHA
         id: upstream
         run: |
-          UPSTREAM_SHA=$(git ls-remote $UPSTREAM_REPO refs/heads/$UPSTREAM_BRANCH | cut -f1)
-          echo "sha=$UPSTREAM_SHA" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          if ! command -v git >/dev/null 2>&1; then
+            echo "ERROR: git is not installed on this runner"
+            exit 1
+          fi
+
+          UPSTREAM_SHA=$(git ls-remote "$UPSTREAM_REPO" "refs/heads/$UPSTREAM_BRANCH" | cut -f1)
+
+          if [ -z "$UPSTREAM_SHA" ]; then
+            echo "ERROR: Failed to resolve upstream SHA"
+            exit 1
+          fi
+
+          echo "sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
           echo "Upstream SHA: $UPSTREAM_SHA"
 
       - name: Log in to GHCR
@@ -46,21 +59,36 @@ jobs:
       - name: Get previously built upstream SHA
         id: previous
         run: |
+          set -euo pipefail
+
           docker pull ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest || true
+
           PREV_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
-            --format='{{ index .Config.Labels "upstream.sha" }}' 2>/dev/null || echo "")
-          echo "sha=$PREV_SHA" >> $GITHUB_OUTPUT
-          echo "Previous SHA: $PREV_SHA"
+            --format='{{ index .Config.Labels "upstream.sha" }}' 2>/dev/null || true)
+
+          echo "Previous SHA: ${PREV_SHA:-<none>}"
+          echo "sha=${PREV_SHA:-}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build
         id: decide
         run: |
-          if [ "${{ steps.upstream.outputs.sha }}" = "${{ steps.previous.outputs.sha }}" ]; then
+          set -euo pipefail
+
+          UP="${{ steps.upstream.outputs.sha }}"
+          PREV="${{ steps.previous.outputs.sha }}"
+
+          if [ -z "$PREV" ]; then
+            echo "No previous build detected – building"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$UP" = "$PREV" ]; then
             echo "No upstream changes detected – skipping build"
-            echo "build=false" >> $GITHUB_OUTPUT
+            echo "build=false" >> "$GITHUB_OUTPUT"
           else
             echo "Upstream changed – build required"
-            echo "build=true" >> $GITHUB_OUTPUT
+            echo "build=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up QEMU (optional, for multi-arch)
