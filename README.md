@@ -7,7 +7,7 @@ The parameters provide some level of flexibility; you are welcome to clone and m
 
 The compose file is meant to build separate parallel containers per each GPU.
 
-The compose definition contains a node extension init container as a bonus. If you want to run it be sure to define the COMPOSE_PROFILES environment variable. Enable the init container for one stack only. If you share the volumes between stacks, only one of them needs to run the init in order to update nodes for all your stacks.
+The compose definition contains a node extension init container as a bonus. If you want to run it be sure to define the COMPOSE_PROFILES environment variable. If you share the volumes between stacks, only one of them needs to run the init in order to update nodes for all your stacks.
 
 ## Deployment:
 - manual: 
@@ -17,7 +17,7 @@ The compose definition contains a node extension init container as a bonus. If y
 - portainer (git): 
   - create a stack in Portainer from this Git repo using the https://github.com/dam-pav/comfyui.git address.
   - set the environment variables in the stack settings.
-  - You can take advantage of the automated updates feature.
+  - Automated pull feature will not have the effect you might expect, because building an image does not actually change the repo. In order to maintain your containers up to date use https://github.com/containrrr/watchtower or a suitable fork.
 
 ## Environment variables
 
