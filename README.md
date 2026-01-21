@@ -1,4 +1,4 @@
-ComfyUI Docker Image & Compose Setup
+ComfyUI Docker Image & Compose Template
 =================================
 
 This repository provides a ready-to-use Docker image and a `docker-compose.yml` for running ComfyUI with Nvidia GPU support. The image is built from the official upstream repository at https://github.com/Comfy-Org/ComfyUI and is updated automatically by a GitHub Actions workflow whenever new upstream changes are detected.
