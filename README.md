@@ -13,7 +13,7 @@ The compose definition contains a node extension init container as a bonus. If y
 - manual: 
   - copy `docker-compose.yml` to a folder on your Linux host
   - create . .env file with the required and optional environment variables
-  - run `docker compose` in the same folder.
+  - run `docker compose up -d` in the same folder.
 - portainer (git): 
   - create a stack in Portainer from this Git repo using the https://github.com/dam-pav/comfyui.git address.
   - set the environment variables in the stack settings.
