@@ -29,6 +29,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug upstream access
+        run: |
+          git --version
+          git ls-remote https://github.com/Comfy-Org/ComfyUI.git | head -5
+
       - name: Get upstream repo SHA
         id: upstream
         run: |
