@@ -41,7 +41,9 @@ services:
     image: ghcr.io/dam-pav/comfyui:latest
     container_name: comfyui_gpu${COMFYUI_GPU_DEVICE_ID:-0}
     runtime: nvidia
-
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true" # opt in watchtower
+      
     # Docker 29 or newer:
     gpus:
       - device_ids: ["${COMFYUI_GPU_DEVICE_ID:-0}"]
