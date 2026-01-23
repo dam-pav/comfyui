@@ -18,7 +18,7 @@ The compose definition contains a node extension init container as a bonus. If y
   - create a stack in Portainer from this Git repo using the https://github.com/dam-pav/comfyui.git address.
   - set the environment variables in the stack settings.
   - Automated pull feature will not have the effect you might expect, because building an image does not actually change the repo.
-- In order to maintain your containers up to date based on image updates use https://github.com/containrrr/watchtower or a suitable fork. This regardless whether your deployment is manual or else.
+- In order to maintain your containers up to date based on image updates use https://github.com/containrrr/watchtower or a suitable fork. Or, you can try https://github.com/getwud/wud. This regardless whether your deployment is manual or else.
 
 ## Environment variables
 
