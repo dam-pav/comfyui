@@ -38,19 +38,23 @@ jobs:
             UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI_frontend.git
     
     steps:
-      - name: Skip non-selected image on manual dispatch
+      - name: Determine whether image is selected
         id: select
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.image_name != matrix.IMAGE_NAME }}
         run: |
-          echo "Skipping image ${{ matrix.IMAGE_NAME }} (manual dispatch selected ${{ github.event.inputs.image_name }})"
-          exit 0
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            && [ "${{ github.event.inputs.image_name }}" != "${{ matrix.IMAGE_NAME }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping image ${{ matrix.IMAGE_NAME }}"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Checkout
-        if: steps.select.outputs.selected == 'true'
+        if: steps.select.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Detect upstream default branch
-        if: steps.select.outputs.selected == 'true'
+        if: steps.select.outputs.skip != 'true'
         id: upstream
         run: |
           set -euo pipefail
@@ -72,7 +76,7 @@ jobs:
           echo "Upstream SHA: $SHA"
 
       - name: Log in to GHCR
-        if: steps.select.outputs.selected == 'true'
+        if: steps.select.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -80,7 +84,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get previously built upstream SHA
-        if: steps.select.outputs.selected == 'true'
+        if: steps.select.outputs.skip != 'true'
         id: previous
         run: |
           set -euo pipefail
@@ -107,7 +111,7 @@ jobs:
           echo "sha=${PREV_SHA:-}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build
-        if: steps.select.outputs.selected == 'true'
+        if: steps.select.outputs.skip != 'true'
         id: decide
         run: |
           set -euo pipefail
