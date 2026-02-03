@@ -21,20 +21,22 @@ The compose definition contains a node extension init container as a bonus. If y
 
 ## Environment variables
 
-- COMFYUI_PATH (required)
+- `COMFYUI_PATH` (required)
 	- Absolute path on the host where ComfyUI data will live.
 	- The compose file will use subfolders of this path for `user`, `custom_nodes`, `models`, `input`, and `output`.
 
-- COMFYUI_GPU_DEVICE_ID (optional, default `0`)
+- `COMFYUI_GPU_DEVICE_ID` (optional, default `0`)
 	- Selects which GPU the container uses (as seen by Docker/NVIDIA).
 	- If not set, GPU `0` is used.
 
-- COMFYUI_PORT (optional, default `8188`)
+- `COMFYUI_PORT` (optional, default `8188`)
 	- Host port that will be mapped to the container’s internal port `8188`.
 	- If not set, the UI is exposed on port `8188`.
 
-- COMPOSE_PROFILES (optional)
+- `COMPOSE_PROFILES` (optional)
 	- Set to `kjnodes` to enable the `comfyui_init_kjnodes` init container, which installs or updates ComfyUI-KJNodes in `COMFYUI_PATH/custom_nodes`.
+- `WATCHTOWER` (optional, default `false`): controls the `com.centurylinklabs.watchtower.enable` label; set to `true` to allow Watchtower detection when used.
+- `CUSTOM_LABEL` (optional, default `foo=bar`): additional label value you can use for whatever reason. Remember, you can only define one single label, no more.
 
 ## Manual usage example
 
