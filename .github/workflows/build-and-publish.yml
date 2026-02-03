@@ -39,15 +39,18 @@ jobs:
     
     steps:
       - name: Skip non-selected image on manual dispatch
+        id: select
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.image_name != matrix.IMAGE_NAME }}
         run: |
           echo "Skipping image ${{ matrix.IMAGE_NAME }} (manual dispatch selected ${{ github.event.inputs.image_name }})"
           exit 0
 
       - name: Checkout
+        if: steps.select.outputs.selected == 'true'
         uses: actions/checkout@v4
 
       - name: Detect upstream default branch
+        if: steps.select.outputs.selected == 'true'
         id: upstream
         run: |
           set -euo pipefail
@@ -69,6 +72,7 @@ jobs:
           echo "Upstream SHA: $SHA"
 
       - name: Log in to GHCR
+        if: steps.select.outputs.selected == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -76,6 +80,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get previously built upstream SHA
+        if: steps.select.outputs.selected == 'true'
         id: previous
         run: |
           set -euo pipefail
@@ -102,6 +107,7 @@ jobs:
           echo "sha=${PREV_SHA:-}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build
+        if: steps.select.outputs.selected == 'true'
         id: decide
         run: |
           set -euo pipefail
