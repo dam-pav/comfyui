@@ -1,4 +1,4 @@
-name: Build and publish ComfyUI image
+name: Build and publish ComfyUI images
 
 on:
   push:
@@ -11,7 +11,14 @@ on:
     # Every day at 06:00 (Summer CET)
     - cron: "0 4 * * *"
 
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Select image to build'
+        required: true
+        default: 'comfyui'
+        type: choice
+        options: [comfyui, comfyui_desktop, comfyui_frontend]
 
 jobs:
   build-and-push:
@@ -20,9 +27,18 @@ jobs:
       contents: read
       packages: write
 
-    env:
-      IMAGE_NAME: comfyui
-      UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI.git
+    strategy:
+      matrix:
+        include:
+          - IMAGE_NAME: comfyui
+            UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI.git
+          - IMAGE_NAME: comfyui_desktop
+            UPSTREAM_REPO: https://github.com/Comfy-Org/desktop.git
+          - IMAGE_NAME: comfyui_frontend
+            UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI_frontend.git
+
+    # Only run specific matrix job for manual dispatch
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.image_name == matrix.IMAGE_NAME }}
 
     steps:
       - name: Checkout
@@ -74,9 +90,9 @@ jobs:
           # Try to pull the image; if it doesn't exist we continue (that's
           # expected on first publish), but any daemon errors will already have
           # caused the step to fail above.
-          docker pull ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest || true
+          docker pull ghcr.io/${{ github.repository_owner }}/${{ matrix.IMAGE_NAME }}:latest || true
 
-          PREV_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
+          PREV_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ matrix.IMAGE_NAME }}:latest \
             --format='{{ index .Config.Labels "upstream.sha" }}' 2>/dev/null || true)
 
           echo "Previous SHA: ${PREV_SHA:-<none>}"
@@ -117,7 +133,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
@@ -132,14 +148,15 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
-            upstream.repo=${{ env.UPSTREAM_REPO }}
-            upstream.branch=${{ env.UPSTREAM_BRANCH }}
+            upstream.repo=${{ matrix.UPSTREAM_REPO }}
+            upstream.branch=${{ steps.upstream.outputs.branch }}
             upstream.sha=${{ steps.upstream.outputs.sha }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+            matrix.image_name=${{ matrix.IMAGE_NAME }}
+          cache-from: type=local,src=/tmp/.buildx-cache-${{ matrix.IMAGE_NAME }}
+          cache-to: type=local,dest=/tmp/.buildx-cache-new-${{ matrix.IMAGE_NAME }},mode=max
 
       - name: Move build cache
         if: steps.decide.outputs.build == 'true'
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          rm -rf /tmp/.buildx-cache-${{ matrix.IMAGE_NAME }}
+          mv /tmp/.buildx-cache-new-${{ matrix.IMAGE_NAME }} /tmp/.buildx-cache-${{ matrix.IMAGE_NAME }}
