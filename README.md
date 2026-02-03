@@ -1,43 +1,18 @@
-ComfyUI Docker Image & Compose Template
-=================================
+# ComfyUI Docker Image & Compose
 
-This repository provides a ready-to-use Docker image and a `docker-compose.yml` for running ComfyUI with Nvidia GPU support. The image is built from the official upstream repository at https://github.com/Comfy-Org/ComfyUI and is updated automatically by a GitHub Actions workflow whenever new upstream changes are detected.
+This repository provides a Docker image and `docker-compose.yml` templates for running ComfyUI with optional NVIDIA GPU support. The image is built from the official upstream repository at https://github.com/Comfy-Org/ComfyUI and is updated via a GitHub Actions workflow.
 
-The parameters provide some level of flexibility; you are welcome to clone and modify the compose definition locally as required. You will still be able to pull the image.
+Key features:
 
-The compose file is meant to build separate parallel containers per each GPU.
+- Builds a lightweight container based on upstream ComfyUI
+- `docker-compose.yml` to run per-GPU parallel services
+- Optional init container for installing/updating KJNodes
 
-The compose definition contains a node extension init container as a bonus. If you want to run it be sure to define the COMPOSE_PROFILES environment variable. If you share the volumes between stacks, only one of them needs to run the init in order to update nodes for all your stacks.
+## Quick start
 
-## Deployment:
-- manual: 
-  - copy `docker-compose.yml` to a folder on your Linux host
-  - create . .env file with the required and optional environment variables
-  - run `docker compose up -d` in the same folder.
-- portainer (git): 
-  - create a stack in Portainer from this Git repo using the https://github.com/dam-pav/comfyui.git address.
-  - set the environment variables in the stack settings.
-  - Automated pull feature will not have the effect you might expect, because building an image does not actually change the repo.
-- In order to maintain your containers up to date based on image updates use https://github.com/containrrr/watchtower or a suitable fork. Or, you can try https://github.com/getwud/wud. This regardless whether your deployment is manual or else.
-
-## Environment variables
-
-- COMFYUI_PATH (required)
-	- Absolute path on the host where ComfyUI data will live.
-	- The compose file will use subfolders of this path for `user`, `custom_nodes`, `models`, `input`, and `output`.
-
-- COMFYUI_GPU_DEVICE_ID (optional, default `0`)
-	- Selects which GPU the container uses (as seen by Docker/NVIDIA).
-	- If not set, GPU `0` is used.
-
-- COMFYUI_PORT (optional, default `8188`)
-	- Host port that will be mapped to the container’s internal port `8188`.
-	- If not set, the UI is exposed on port `8188`.
-
-- COMPOSE_PROFILES (optional)
-	- Set to `kjnodes` to enable the `comfyui_init_kjnodes` init container, which installs or updates ComfyUI-KJNodes in `COMFYUI_PATH/custom_nodes`.
-
-## Manual usage example
+1. Copy `docker-compose.yml` to a folder on your Linux host.
+2. Set required environment variables (see below) in a `.env` file or export them in your shell.
+3. Run:
 
 ```bash
 export COMFYUI_PATH=/srv/comfyui
@@ -46,4 +21,31 @@ export COMFYUI_PORT=8188
 docker compose up -d
 ```
 
-In Portainer, define the same variables in the stack’s Environment tab before deploying.
+For Portainer: create a stack from this Git repo and set the same environment variables in the stack settings.
+
+## Environment variables
+
+- `COMFYUI_PATH` (required): absolute host path where ComfyUI data is stored. The compose file uses subfolders `user`, `custom_nodes`, `models`, `input`, and `output` under this path.
+- `COMFYUI_GPU_DEVICE_ID` (optional, default `0`): selects which GPU the container uses; used in the container name and `gpus.device_ids`.
+- `COMFYUI_PORT` (optional, default `8188`): host port mapped to container port `8188`.
+- `COMPOSE_PROFILES` (optional): set to `kjnodes` to enable the `comfyui_init_kjnodes` init container which installs/updates ComfyUI-KJNodes into `COMFYUI_PATH/custom_nodes`.
+- `WATCHTOWER` (optional, default `false`): controls the `com.centurylinklabs.watchtower.enable` label; set to `true` to allow Watchtower detection when used.
+- `CUSTOM_LABEL` (optional, default `foo=bar`): additional label value you can use for whatever reason. Remember, you can only define one single label, no more.
+
+## Keeping containers up to date
+
+Use tools such as `containrrr/watchtower` or `getwud/wud` to auto-update running containers when new images are published.
+
+## Deployment:
+
+- manual:
+  - copy `docker-compose.yml` to a folder on your Linux host
+  - create . .env file with the required and optional environment variables
+  - run `docker compose up -d` in the same folder.
+- portainer (git):
+  - create a stack in Portainer from this Git repo using the https://github.com/dam-pav/comfyui.git address.
+  - set the environment variables in the stack settings.
+  - Automated pull feature will not have the effect you might expect, because building an image does not actually change the repo.
+- In order to maintain your containers up to date based on image updates use https://github.com/containrrr/watchtower or a suitable fork. Or, you can try https://github.com/getwud/wud. This regardless whether your deployment is manual or else.
+
+<!-- Duplicate environment section removed (see above). -->

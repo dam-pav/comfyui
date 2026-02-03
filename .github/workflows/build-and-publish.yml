@@ -1,4 +1,4 @@
-name: Build and publish ComfyUI images
+name: Build and publish ComfyUI image
 
 on:
   push:
@@ -11,14 +11,7 @@ on:
     # Every day at 06:00 (Summer CET)
     - cron: "0 4 * * *"
 
-  workflow_dispatch:
-    inputs:
-      image_name:
-        description: 'Select image to build'
-        required: true
-        default: 'comfyui'
-        type: choice
-        options: [comfyui, comfyui_desktop, comfyui_frontend]
+  workflow_dispatch: {}
 
 jobs:
   build-and-push:
@@ -27,42 +20,23 @@ jobs:
       contents: read
       packages: write
 
-    strategy:
-      matrix:
-        include:
-          - IMAGE_NAME: comfyui
-            UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI.git
-          - IMAGE_NAME: comfyui_desktop
-            UPSTREAM_REPO: https://github.com/Comfy-Org/desktop.git
-          - IMAGE_NAME: comfyui_frontend
-            UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI_frontend.git
-    
-    steps:
-      - name: Determine whether image is selected
-        id: select
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
-            && [ "${{ github.event.inputs.image_name }}" != "${{ matrix.IMAGE_NAME }}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping image ${{ matrix.IMAGE_NAME }}"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+    env:
+      IMAGE_NAME: comfyui
+      UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI.git
 
+    steps:
       - name: Checkout
-        if: steps.select.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Detect upstream default branch
-        if: steps.select.outputs.skip != 'true'
         id: upstream
         run: |
           set -euo pipefail
 
-          REF=$(git ls-remote --symref "${{ matrix.UPSTREAM_REPO }}" HEAD | awk '/^ref:/ {print $2}')
+          REF=$(git ls-remote --symref "$UPSTREAM_REPO" HEAD | awk '/^ref:/ {print $2}')
           BRANCH=${REF#refs/heads/}
 
-          SHA=$(git ls-remote "${{ matrix.UPSTREAM_REPO }}" "refs/heads/$BRANCH" | cut -f1)
+          SHA=$(git ls-remote "$UPSTREAM_REPO" "refs/heads/$BRANCH" | cut -f1)
 
           if [ -z "$SHA" ]; then
             echo "ERROR: Failed to resolve upstream SHA"
@@ -76,7 +50,6 @@ jobs:
           echo "Upstream SHA: $SHA"
 
       - name: Log in to GHCR
-        if: steps.select.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -84,7 +57,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get previously built upstream SHA
-        if: steps.select.outputs.skip != 'true'
         id: previous
         run: |
           set -euo pipefail
@@ -102,16 +74,15 @@ jobs:
           # Try to pull the image; if it doesn't exist we continue (that's
           # expected on first publish), but any daemon errors will already have
           # caused the step to fail above.
-          docker pull ghcr.io/${{ github.repository_owner }}/${{ matrix.IMAGE_NAME }}:latest || true
+          docker pull ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest || true
 
-          PREV_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ matrix.IMAGE_NAME }}:latest \
+          PREV_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
             --format='{{ index .Config.Labels "upstream.sha" }}' 2>/dev/null || true)
 
           echo "Previous SHA: ${PREV_SHA:-<none>}"
           echo "sha=${PREV_SHA:-}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build
-        if: steps.select.outputs.skip != 'true'
         id: decide
         run: |
           set -euo pipefail
@@ -146,7 +117,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.IMAGE_NAME }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
@@ -161,15 +132,14 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
-            upstream.repo=${{ matrix.UPSTREAM_REPO }}
-            upstream.branch=${{ steps.upstream.outputs.branch }}
+            upstream.repo=${{ env.UPSTREAM_REPO }}
+            upstream.branch=${{ env.UPSTREAM_BRANCH }}
             upstream.sha=${{ steps.upstream.outputs.sha }}
-            matrix.image_name=${{ matrix.IMAGE_NAME }}
-          cache-from: type=local,src=/tmp/.buildx-cache-${{ matrix.IMAGE_NAME }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-new-${{ matrix.IMAGE_NAME }},mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
       - name: Move build cache
         if: steps.decide.outputs.build == 'true'
         run: |
-          rm -rf /tmp/.buildx-cache-${{ matrix.IMAGE_NAME }}
-          mv /tmp/.buildx-cache-new-${{ matrix.IMAGE_NAME }} /tmp/.buildx-cache-${{ matrix.IMAGE_NAME }}
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
