@@ -36,6 +36,9 @@ jobs:
             UPSTREAM_REPO: https://github.com/Comfy-Org/desktop.git
           - IMAGE_NAME: comfyui_frontend
             UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI_frontend.git
+    
+    env:
+      UPSTREAM_REPO: ${{ matrix.UPSTREAM_REPO }}
 
     steps:
       - name: Skip non-selected image on manual dispatch
