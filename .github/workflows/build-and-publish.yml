@@ -37,10 +37,13 @@ jobs:
           - IMAGE_NAME: comfyui_frontend
             UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI_frontend.git
 
-    # Only run specific matrix job for manual dispatch
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.image_name == matrix.IMAGE_NAME }}
-
     steps:
+      - name: Skip non-selected image on manual dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.image_name != matrix.IMAGE_NAME }}
+        run: |
+          echo "Skipping image ${{ matrix.IMAGE_NAME }} (manual dispatch selected ${{ github.event.inputs.image_name }})"
+          exit 0
+
       - name: Checkout
         uses: actions/checkout@v4
 
