@@ -44,7 +44,6 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=${WATCHTOWER:-false}"
       - "${CUSTOM_LABEL:-foo=bar}"
-
     gpus:
       - device_ids: ["${COMFYUI_GPU_DEVICE_ID:-0}"]
         capabilities: ["gpu"]

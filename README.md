@@ -1,5 +1,4 @@
-ComfyUI Docker Image & Compose Setup
-=================================
+# ComfyUI Docker Image & Compose
 
 This repository provides a ready-to-use Docker image and a `docker-compose.yml` for running ComfyUI with Nvidia GPU support. The image is built from the official upstream repository at https://github.com/Comfy-Org/ComfyUI and is updated automatically by a GitHub Actions workflow whenever new upstream changes are detected.
 
@@ -47,4 +46,20 @@ export COMFYUI_PORT=8188
 docker compose up -d
 ```
 
-In Portainer, define the same variables in the stack’s Environment tab before deploying.
+For Portainer: create a stack from this Git repo and set the same environment variables in the stack settings.
+
+## Keeping containers up to date
+
+Use tools such as `containrrr/watchtower` or `getwud/wud` to auto-update running containers when new images are published.
+
+## Deployment:
+
+- manual:
+  - copy `docker-compose.yml` to a folder on your Linux host
+  - create . .env file with the required and optional environment variables
+  - run `docker compose up -d` in the same folder.
+- portainer (git):
+  - create a stack in Portainer from this Git repo using the https://github.com/dam-pav/comfyui.git address.
+  - set the environment variables in the stack settings.
+  - Automated pull feature will not have the effect you might expect, because building an image does not actually change the repo.
+- In order to maintain your containers up to date based on image updates use https://github.com/containrrr/watchtower or a suitable fork. Or, you can try https://github.com/getwud/wud. This regardless whether your deployment is manual or else.
