@@ -9,6 +9,33 @@
 version: "3.9"
 
 services:
+  comfyui_init_qwentts:
+    profiles: [qwentts]
+    image: alpine:3.20
+    container_name: comfyui_init_qwentts
+    restart: "no"
+    volumes:
+      - ${COMFYUI_PATH}/custom_nodes:/custom_nodes
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache git
+
+        echo ">>> Installing Qwen-TTS"
+
+        if [ ! -d /custom_nodes/ComfyUI-Qwen-TTS ]; then
+          git clone https://github.com/flybirdxx/ComfyUI-Qwen-TTS.git /custom_nodes/ComfyUI-Qwen-TTS
+          echo ">>> Qwen-TTS cloned"
+        else
+          echo ">>> Qwen-TTS already present, updating"
+          cd /custom_nodes/ComfyUI-Qwen-TTS
+          git pull --ff-only || true
+        fi
+
+        echo ">>> Init container finished"
+
   comfyui_init_kjnodes:
     profiles: [kjnodes]
     image: alpine:3.20
@@ -52,11 +79,28 @@ services:
       TZ: Europe/Ljubljana
       NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
 
-    command: ["python", "main.py", 
-              "--listen", "0.0.0.0", 
-              "--port", "8188", 
-              "--disable-async-offload",
-              "--enable-cors-header", "*"]
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+
+        echo ">>> Installing custom node requirements"
+
+        . /opt/ComfyUI/venv/bin/activate
+
+        for dir in /opt/ComfyUI/custom_nodes/*; do
+          if [ -f "$dir/requirements.txt" ]; then
+            echo ">>> Installing requirements from $dir"
+            pip install --no-cache-dir -r "$dir/requirements.txt" || true
+          fi
+        done
+
+        exec python main.py \
+          --listen 0.0.0.0 \
+          --port 8188 \
+          --disable-async-offload \
+          --enable-cors-header "*"
 
     volumes:
       - ${COMFYUI_PATH}/user:/opt/ComfyUI/user
