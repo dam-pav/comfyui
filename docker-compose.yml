@@ -99,16 +99,17 @@ services:
         echo ">>> Checking for Qwen-TTS node"
 
         if [ -d "/opt/ComfyUI/custom_nodes/ComfyUI-Qwen-TTS" ]; then
-          echo ">>> Qwen-TTS detected — enforcing transformers + librosa"
+          echo ">>> Qwen-TTS detected — enforcing audio + HF deps"
 
-          pip install --no-cache-dir \
+          pip install --no-cache-dir --upgrade \
             transformers==4.57.3 \
             librosa \
-            --upgrade
+            sox
 
           echo ">>> Installed versions:"
           pip show transformers | grep Version
           pip show librosa | grep Version
+          pip show sox | grep Version
         else
           echo ">>> Qwen-TTS not present — skipping transformers override"
         fi
