@@ -105,13 +105,15 @@ services:
             transformers==4.57.3 \
             librosa \
             sox \
-            onnxruntime
+            onnxruntime \
+            accelerate
 
           echo ">>> Installed versions:"
           pip show transformers | grep Version
           pip show librosa | grep Version
           pip show sox | grep Version
           pip show onnxruntime | grep Version
+          pip show accelerate | grep Version
         else
           echo ">>> Qwen-TTS not present — skipping audio + HF deps override"
         fi
