@@ -85,16 +85,33 @@ services:
       - |
         set -e
 
-        echo ">>> Installing custom node requirements"
-
         . /opt/ComfyUI/venv/bin/activate
+        pip install --no-cache-dir --upgrade pip
 
+        echo ">>> Installing custom node requirements"
         for dir in /opt/ComfyUI/custom_nodes/*; do
           if [ -f "$dir/requirements.txt" ]; then
             echo ">>> Installing requirements from $dir"
-            pip install --no-cache-dir -r "$dir/requirements.txt" || true
+            pip install --no-cache-dir -r "$dir/requirements.txt"
           fi
         done
+
+        echo ">>> Checking for Qwen-TTS node"
+
+        if [ -d "/opt/ComfyUI/custom_nodes/ComfyUI-Qwen-TTS" ]; then
+          echo ">>> Qwen-TTS detected — enforcing transformers + librosa"
+
+          pip install --no-cache-dir \
+            transformers==4.57.3 \
+            librosa \
+            --upgrade
+
+          echo ">>> Installed versions:"
+          pip show transformers | grep Version
+          pip show librosa | grep Version
+        else
+          echo ">>> Qwen-TTS not present — skipping transformers override"
+        fi
 
         exec python main.py \
           --listen 0.0.0.0 \
