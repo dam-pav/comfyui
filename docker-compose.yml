@@ -104,14 +104,16 @@ services:
           pip install --no-cache-dir --upgrade \
             transformers==4.57.3 \
             librosa \
-            sox
+            sox \
+            onnxruntime
 
           echo ">>> Installed versions:"
           pip show transformers | grep Version
           pip show librosa | grep Version
           pip show sox | grep Version
+          pip show onnxruntime | grep Version
         else
-          echo ">>> Qwen-TTS not present — skipping transformers override"
+          echo ">>> Qwen-TTS not present — skipping audio + HF deps override"
         fi
 
         exec python main.py \
