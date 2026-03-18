@@ -88,6 +88,14 @@ services:
         . /opt/ComfyUI/venv/bin/activate
         pip install --no-cache-dir --upgrade pip
 
+        echo ">>> Ensuring ComfyUI-Manager is present"
+        if [ ! -d /opt/ComfyUI/custom_nodes/ComfyUI-Manager ]; then
+          git clone --depth=1 https://github.com/Comfy-Org/ComfyUI-Manager.git /opt/ComfyUI/custom_nodes/ComfyUI-Manager
+          echo ">>> ComfyUI-Manager cloned"
+        else
+          echo ">>> ComfyUI-Manager already present"
+        fi
+
         echo ">>> Installing custom node requirements"
         for dir in /opt/ComfyUI/custom_nodes/*; do
           if [ -f "$dir/requirements.txt" ]; then

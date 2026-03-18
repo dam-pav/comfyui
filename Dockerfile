@@ -3,6 +3,8 @@ FROM python:3.10-slim
 # Use the official ComfyUI repo
 ARG COMFYUI_REPO=https://github.com/Comfy-Org/ComfyUI.git
 ARG COMFYUI_BRANCH=master
+ARG COMFYUI_MANAGER_REPO=https://github.com/Comfy-Org/ComfyUI-Manager.git
+ARG COMFYUI_MANAGER_BRANCH=main
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,6 +22,9 @@ WORKDIR /opt
 RUN git clone --depth=1 -b ${COMFYUI_BRANCH} ${COMFYUI_REPO} ComfyUI
 
 WORKDIR /opt/ComfyUI
+
+# Bundle ComfyUI-Manager for image users who do not mount custom_nodes
+RUN git clone --depth=1 -b ${COMFYUI_MANAGER_BRANCH} ${COMFYUI_MANAGER_REPO} custom_nodes/ComfyUI-Manager
 
 # Create and use venv
 RUN python -m venv /opt/ComfyUI/venv
@@ -50,6 +55,11 @@ RUN /opt/ComfyUI/venv/bin/python -m pip install \
       av \
       imageio-ffmpeg \
       toml
+
+# Install ComfyUI-Manager Python dependencies
+RUN /opt/ComfyUI/venv/bin/python -m pip install --no-cache-dir \
+      -r custom_nodes/ComfyUI-Manager/requirements.txt \
+ && /opt/ComfyUI/venv/bin/python -m pip cache purge
 
 # Install ComfyUI-KJNodes Python dependencies (from upstream requirements.txt)
 ADD https://raw.githubusercontent.com/kijai/ComfyUI-KJNodes/main/requirements.txt \

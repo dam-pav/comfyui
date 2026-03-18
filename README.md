@@ -2,6 +2,8 @@
 
 This repository provides a ready-to-use Docker image and a `docker-compose.yml` for running ComfyUI with Nvidia GPU support. The image is built from the official upstream repository at https://github.com/Comfy-Org/ComfyUI and is updated automatically by a GitHub Actions workflow whenever new upstream changes are detected.
 
+`ComfyUI-Manager` is included as part of the package. The image bundles it for direct `docker run` usage, and the compose startup command will clone it into the persistent `custom_nodes` volume automatically if it is missing.
+
 The parameters provide some level of flexibility; you are welcome to clone and modify the compose definition locally as required. You will still be able to pull the image.
 
 The compose file is meant to build separate parallel containers per each GPU.
@@ -36,6 +38,11 @@ The compose definition contains a node extension init container as a bonus. If y
 	- Set to `kjnodes` to enable the `comfyui_init_kjnodes` init container, which installs or updates ComfyUI-KJNodes in `COMFYUI_PATH/custom_nodes`.
 - `WATCHTOWER` (optional, default `false`): controls the `com.centurylinklabs.watchtower.enable` label; set to `true` to allow Watchtower detection when used.
 - `CUSTOM_LABEL` (optional, default `foo=bar`): additional label value you can use for whatever reason. Remember, you can only define one single label, no more.
+
+## Included custom nodes
+
+- `ComfyUI-Manager` is installed automatically.
+- `ComfyUI-KJNodes` remains optional and can be enabled with `COMPOSE_PROFILES=kjnodes`.
 
 ## Manual usage example
 
