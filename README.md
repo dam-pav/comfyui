@@ -35,7 +35,11 @@ The compose definition contains a node extension init container as a bonus. If y
 	- If not set, the UI is exposed on port `8188`.
 
 - `COMPOSE_PROFILES` (optional)
-	- Set to `kjnodes` to enable the `comfyui_init_kjnodes` init container, which installs or updates ComfyUI-KJNodes in `COMFYUI_PATH/custom_nodes`.
+  - Set to `kjnodes` to enable the `comfyui_init_kjnodes` init container, which installs or updates ComfyUI-KJNodes in `COMFYUI_PATH/custom_nodes`.
+- `COMFYUI_MANAGER_SECURITY_LEVEL` (optional)
+	- Overrides the `ComfyUI-Manager` `security_level` written to the persistent user config.
+	- If not set and no manager config exists yet, the compose startup creates one with `security_level = normal-` so ordinary node installs/updates are allowed while still blocking higher-risk actions.
+	- If you already have a manager config, it is preserved unless this variable is explicitly set.
 - `WATCHTOWER` (optional, default `false`): controls the `com.centurylinklabs.watchtower.enable` label; set to `true` to allow Watchtower detection when used.
 - `CUSTOM_LABEL` (optional, default `foo=bar`): additional label value you can use for whatever reason. Remember, you can only define one single label, no more.
 
@@ -54,6 +58,26 @@ docker compose up -d
 ```
 
 For Portainer: create a stack from this Git repo and set the same environment variables in the stack settings.
+
+## Troubleshooting
+
+If `ComfyUI-Manager` shows an error like:
+
+```text
+[Installation Errors] 'comfyui_controlnet_aux': This action is not allowed with this security level configuration.
+```
+
+the manager is running with a restrictive `security_level`. With this compose file:
+
+- a fresh deployment will automatically create a manager config with `security_level = normal-`
+- an existing config is left alone unless you set `COMFYUI_MANAGER_SECURITY_LEVEL`
+
+To override it explicitly, set for example:
+
+```bash
+export COMFYUI_MANAGER_SECURITY_LEVEL=normal-
+docker compose up -d
+```
 
 ## Keeping containers up to date
 
