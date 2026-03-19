@@ -97,24 +97,24 @@ services:
           echo ">>> ComfyUI-Manager already present"
         fi
 
-        MANAGER_CONFIG_DIR=/opt/ComfyUI/user/default/ComfyUI-Manager
-        MANAGER_CONFIG_FILE=$$MANAGER_CONFIG_DIR/config.ini
         MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal-}
+        MANAGER_CONFIG_DIR=/opt/ComfyUI/user/__manager
+        MANAGER_CONFIG_FILE=$$MANAGER_CONFIG_DIR/config.ini
 
         echo ">>> Configuring ComfyUI-Manager security level"
         mkdir -p "$$MANAGER_CONFIG_DIR"
         if [ ! -f "$$MANAGER_CONFIG_FILE" ]; then
           printf '[default]\nsecurity_level = %s\n' "$$MANAGER_SECURITY_LEVEL" > "$$MANAGER_CONFIG_FILE"
-          echo ">>> Created ComfyUI-Manager config with security_level=$$MANAGER_SECURITY_LEVEL"
+          echo ">>> Created $$MANAGER_CONFIG_FILE with security_level=$$MANAGER_SECURITY_LEVEL"
         elif [ -n "$${COMFYUI_MANAGER_SECURITY_LEVEL:-}" ]; then
           if grep -q '^[[:space:]]*security_level[[:space:]]*=' "$$MANAGER_CONFIG_FILE"; then
             sed -i "s/^[[:space:]]*security_level[[:space:]]*=.*/security_level = $$MANAGER_SECURITY_LEVEL/" "$$MANAGER_CONFIG_FILE"
           else
             printf '\nsecurity_level = %s\n' "$$MANAGER_SECURITY_LEVEL" >> "$$MANAGER_CONFIG_FILE"
           fi
-          echo ">>> Updated ComfyUI-Manager config to security_level=$$MANAGER_SECURITY_LEVEL"
+          echo ">>> Updated $$MANAGER_CONFIG_FILE to security_level=$$MANAGER_SECURITY_LEVEL"
         else
-          echo ">>> Existing ComfyUI-Manager config preserved"
+          echo ">>> Existing $$MANAGER_CONFIG_FILE preserved"
         fi
 
         echo ">>> Installing custom node requirements"

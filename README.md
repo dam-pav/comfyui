@@ -40,6 +40,7 @@ The compose definition contains a node extension init container as a bonus. If y
 	- Overrides the `ComfyUI-Manager` `security_level` written to the persistent user config.
 	- If not set and no manager config exists yet, the compose startup creates one with `security_level = normal-` so ordinary node installs/updates are allowed while still blocking higher-risk actions.
 	- If you already have a manager config, it is preserved unless this variable is explicitly set.
+	- The compose startup writes `user/__manager/config.ini`, which is the current protected Manager config path.
 - `WATCHTOWER` (optional, default `false`): controls the `com.centurylinklabs.watchtower.enable` label; set to `true` to allow Watchtower detection when used.
 - `CUSTOM_LABEL` (optional, default `foo=bar`): additional label value you can use for whatever reason. Remember, you can only define one single label, no more.
 
