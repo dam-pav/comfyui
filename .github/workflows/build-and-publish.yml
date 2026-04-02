@@ -133,7 +133,7 @@ jobs:
           labels: |
             ${{ steps.meta.outputs.labels }}
             upstream.repo=${{ env.UPSTREAM_REPO }}
-            upstream.branch=${{ env.UPSTREAM_BRANCH }}
+            upstream.branch=${{ steps.upstream.outputs.branch }}
             upstream.sha=${{ steps.upstream.outputs.sha }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
