@@ -10,6 +10,16 @@ The compose file is meant to build separate parallel containers per each GPU.
 
 The compose definition contains a node extension init container as a bonus. If you want to run it be sure to define the COMPOSE_PROFILES environment variable. Enable the init container for one stack only. Since the volumes are shared, the one will update nodes for all your stacks.
 
+## Host prerequisites
+
+For Ubuntu and Debian hosts with an NVIDIA GPU, the included prerequisite utility installs the NVIDIA driver, Docker Engine with the Compose plugin, and the NVIDIA Container Toolkit:
+
+```bash
+sudo ./Utils/installPrerequisites.sh
+```
+
+The script configures Docker to use the NVIDIA runtime and validates GPU access from a container. A reboot may be required after installing the GPU driver for the first time.
+
 ## Deployment:
 - manual: 
   - copy `docker-compose.yml` to a folder on your Linux host
@@ -38,7 +48,7 @@ The compose definition contains a node extension init container as a bonus. If y
   - Set to `kjnodes` to enable the `comfyui_init_kjnodes` init container, which installs or updates ComfyUI-KJNodes in `COMFYUI_PATH/custom_nodes`.
 - `COMFYUI_MANAGER_SECURITY_LEVEL` (optional)
 	- Overrides the `ComfyUI-Manager` `security_level` written to the persistent user config.
-	- If not set and no manager config exists yet, the compose startup creates one with `security_level = normal-` so ordinary node installs/updates are allowed while still blocking higher-risk actions.
+	- If not set and no manager config exists yet, the compose startup creates one with `security_level = normal`, which matches the current recommended Manager default and allows registered node installs, updates, and restarts.
 	- If you already have a manager config, it is preserved unless this variable is explicitly set.
 	- The compose startup writes `user/__manager/config.ini`, which is the current protected Manager config path.
 - `WATCHTOWER` (optional, default `false`): controls the `com.centurylinklabs.watchtower.enable` label; set to `true` to allow Watchtower detection when used.
@@ -70,13 +80,13 @@ If `ComfyUI-Manager` shows an error like:
 
 the manager is running with a restrictive `security_level`. With this compose file:
 
-- a fresh deployment will automatically create a manager config with `security_level = normal-`
+- a fresh deployment will automatically create a manager config with `security_level = normal`
 - an existing config is left alone unless you set `COMFYUI_MANAGER_SECURITY_LEVEL`
 
 To override it explicitly, set for example:
 
 ```bash
-export COMFYUI_MANAGER_SECURITY_LEVEL=normal-
+export COMFYUI_MANAGER_SECURITY_LEVEL=normal
 docker compose up -d
 ```
 

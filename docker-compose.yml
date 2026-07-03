@@ -97,7 +97,7 @@ services:
           echo ">>> ComfyUI-Manager already present"
         fi
 
-        MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal-}
+        MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal}
         MANAGER_CONFIG_DIR=/opt/ComfyUI/user/__manager
         MANAGER_CONFIG_FILE=$$MANAGER_CONFIG_DIR/config.ini
 
