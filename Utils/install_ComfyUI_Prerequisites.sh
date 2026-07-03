@@ -2,11 +2,12 @@
 
 # Install the host-side prerequisites needed by docker-compose.yml:
 #   * NVIDIA GPU driver
+#   * nvtop GPU process monitor
 #   * Docker Engine with the Compose plugin
 #   * NVIDIA Container Toolkit configured for Docker
 #
 # Supported distributions: Ubuntu and Debian (x86_64/arm64).
-# Run with: sudo ./Utils/installPrerequisites.sh
+# Run with: sudo ./Utils/install_ComfyUI_Prerequisites.sh
 
 set -Eeuo pipefail
 
@@ -42,7 +43,7 @@ export DEBIAN_FRONTEND=noninteractive
 log "Installing package-management prerequisites"
 apt-get update
 apt-get install -y --no-install-recommends \
-  ca-certificates curl gnupg linux-headers-"$(uname -r)"
+  ca-certificates curl gnupg linux-headers-"$(uname -r)" nvtop
 
 if ! command -v lspci >/dev/null 2>&1; then
   apt-get install -y --no-install-recommends pciutils

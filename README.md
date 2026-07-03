@@ -15,7 +15,7 @@ The compose definition contains a node extension init container as a bonus. If y
 For Ubuntu and Debian hosts with an NVIDIA GPU, the included prerequisite utility installs the NVIDIA driver, Docker Engine with the Compose plugin, and the NVIDIA Container Toolkit:
 
 ```bash
-sudo ./Utils/installPrerequisites.sh
+sudo ./Utils/install_ComfyUI_Prerequisites.sh
 ```
 
 The script configures Docker to use the NVIDIA runtime and validates GPU access from a container. A reboot may be required after installing the GPU driver for the first time.
