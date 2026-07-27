@@ -4,6 +4,11 @@ This repository provides a ready-to-use Docker image and a `docker-compose.yml` 
 
 `ComfyUI-Manager` is included as part of the package. The image bundles it for direct `docker run` usage, and the compose startup command will clone it into the persistent `custom_nodes` volume automatically if it is missing.
 
+The image targets modern NVIDIA GPUs (RTX 20 series and newer) with Python 3.12,
+PyTorch 2.10, and CUDA 12.6 wheels. ComfyUI async weight offloading uses its
+upstream default. The default ComfyUI source revision is pinned to the stable
+`v0.28.0` release and can be changed with the `COMFYUI_BRANCH` build argument.
+
 The parameters provide some level of flexibility; you are welcome to clone and modify the compose definition locally as required. You will still be able to pull the image.
 
 The compose file is meant to build separate parallel containers per each GPU.

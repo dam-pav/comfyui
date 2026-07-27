@@ -1,10 +1,15 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Use the official ComfyUI repo
 ARG COMFYUI_REPO=https://github.com/Comfy-Org/ComfyUI.git
-ARG COMFYUI_BRANCH=master
+ARG COMFYUI_BRANCH=v0.28.0
 ARG COMFYUI_MANAGER_REPO=https://github.com/Comfy-Org/ComfyUI-Manager.git
 ARG COMFYUI_MANAGER_BRANCH=main
+ARG PYTORCH_VERSION=2.10.0
+ARG TORCHVISION_VERSION=0.25.0
+ARG TORCHAUDIO_VERSION=2.10.0
+ARG XFORMERS_VERSION=0.0.34
+ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu126
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,14 +39,15 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 # Upgrade pip tooling and install uv so ComfyUI-Manager can use it if it wants
 RUN /opt/ComfyUI/venv/bin/python -m pip install --upgrade pip setuptools wheel uv
 
-# Install torch + xformers first (CUDA 12.1 wheels)
+# Install a coherent CUDA 12.6 stack for modern NVIDIA GPUs (RTX 20 series+).
 RUN /opt/ComfyUI/venv/bin/python -m pip install \
-      "torch==2.5.1+cu121" \
-      "torchvision==0.20.1+cu121" \
-      "torchaudio==2.5.1+cu121" \
-      --extra-index-url https://download.pytorch.org/whl/cu121 \
+      "torch==${PYTORCH_VERSION}" \
+      "torchvision==${TORCHVISION_VERSION}" \
+      "torchaudio==${TORCHAUDIO_VERSION}" \
+      --index-url "${PYTORCH_INDEX_URL}" \
  && /opt/ComfyUI/venv/bin/python -m pip install \
-      "xformers==0.0.28.post3"
+      "xformers==${XFORMERS_VERSION}" \
+      --index-url "${PYTORCH_INDEX_URL}"
 
 # Base ComfyUI requirements
 RUN /opt/ComfyUI/venv/bin/python -m pip install -r requirements.txt \
