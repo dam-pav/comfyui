@@ -97,6 +97,14 @@ services:
           echo ">>> ComfyUI-Manager already present"
         fi
 
+        echo ">>> Ensuring the A1111 API compatibility shim is present"
+        if [ ! -d /opt/ComfyUI/custom_nodes/comfyui_a1111_api ]; then
+          cp -a /opt/bundled_custom_nodes/comfyui_a1111_api /opt/ComfyUI/custom_nodes/
+          echo ">>> A1111 API compatibility shim installed"
+        else
+          echo ">>> A1111 API compatibility shim already present"
+        fi
+
         MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal}
         MANAGER_CONFIG_DIR=/opt/ComfyUI/user/__manager
         MANAGER_CONFIG_FILE=$$MANAGER_CONFIG_DIR/config.ini

@@ -28,6 +28,11 @@ RUN git clone --depth=1 -b ${COMFYUI_BRANCH} ${COMFYUI_REPO} ComfyUI
 
 WORKDIR /opt/ComfyUI
 
+# Bundle the A1111-compatible API shim outside the custom_nodes volume so the
+# compose startup can install it even when users persist that directory.
+COPY custom_nodes/comfyui_a1111_api /opt/bundled_custom_nodes/comfyui_a1111_api
+COPY custom_nodes/comfyui_a1111_api /opt/ComfyUI/custom_nodes/comfyui_a1111_api
+
 # Bundle ComfyUI-Manager for image users who do not mount custom_nodes
 RUN git clone --depth=1 -b ${COMFYUI_MANAGER_BRANCH} ${COMFYUI_MANAGER_REPO} custom_nodes/ComfyUI-Manager
 
