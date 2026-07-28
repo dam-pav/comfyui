@@ -94,7 +94,9 @@ curl -X POST http://localhost:8188/sdapi/v1/txt2img \
 
 The response uses the A1111 `images`, `parameters`, and `info` shape, with
 generated images returned as base64-encoded PNG data. The compatibility layer
-supports the common text-to-image parameters but does not currently implement
+supports prompts, negative prompts, dimensions, steps, CFG scale, seeds,
+batching, clip skip, and common A1111 sampler/scheduler names. Each request logs
+its resolved parameters without logging the prompt text. It does not currently implement
 `img2img`, high-resolution fix, ControlNet, scripts, or every A1111 setting.
 
 ## Manual usage example

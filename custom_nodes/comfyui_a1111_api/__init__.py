@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import logging
 import random
 
 from aiohttp import ClientSession, web
@@ -19,11 +20,16 @@ SAMPLERS = {
     "DPM++ 2M": "dpmpp_2m",
     "DPM++ SDE": "dpmpp_sde",
     "DPM++ 2M SDE": "dpmpp_2m_sde",
+    "DPM++ 3M SDE": "dpmpp_3m_sde",
     "DPM fast": "dpm_fast",
+    "DPM Fast": "dpm_fast",
     "DPM adaptive": "dpm_adaptive",
+    "DPM Adaptive": "dpm_adaptive",
     "LMS": "lms",
     "DDIM": "ddim",
     "UniPC": "uni_pc",
+    # Agnaistic currently contains this misspelling in its sampler list.
+    "Huen": "heun",
 }
 
 SCHEDULERS = {
@@ -77,6 +83,26 @@ def _model_record(name):
         "filename": name,
         "config": None,
     }
+
+
+def _resolve_sampler(payload):
+    label = payload.get("sampler_name") or payload.get("sampler_index") or "Euler"
+    scheduler_label = str(payload.get("scheduler", "")).lower()
+
+    # A1111 historically encodes the scheduler in the sampler display name.
+    for suffix, scheduler_name in (
+        (" Karras", "karras"),
+        (" Exponential", "exponential"),
+    ):
+        if label.endswith(suffix):
+            label = label[: -len(suffix)]
+            if not scheduler_label:
+                scheduler_label = scheduler_name
+            break
+
+    sampler = SAMPLERS.get(label, label)
+    scheduler = SCHEDULERS.get(scheduler_label or "normal", scheduler_label or "normal")
+    return sampler, scheduler
 
 
 @routes.get("/sdapi/v1/sd-models")
@@ -200,12 +226,12 @@ async def txt2img(request):
         )
 
     sampler_label = payload.get("sampler_name") or payload.get("sampler_index") or "Euler"
-    sampler = SAMPLERS.get(sampler_label, sampler_label)
-    scheduler_label = str(payload.get("scheduler", "normal")).lower()
-    scheduler = SCHEDULERS.get(scheduler_label, scheduler_label)
+    sampler, scheduler = _resolve_sampler(payload)
     seed = int(payload.get("seed", -1))
     if seed < 0:
         seed = random.randrange(0, 2**63)
+    clip_skip = int(payload.get("clip_skip", 1) or 1)
+    clip_source = ["1", 1]
 
     workflow = {
         "1": {
@@ -214,11 +240,11 @@ async def txt2img(request):
         },
         "2": {
             "class_type": "CLIPTextEncode",
-            "inputs": {"text": payload.get("prompt", ""), "clip": ["1", 1]},
+            "inputs": {"text": payload.get("prompt", ""), "clip": clip_source},
         },
         "3": {
             "class_type": "CLIPTextEncode",
-            "inputs": {"text": payload.get("negative_prompt", ""), "clip": ["1", 1]},
+            "inputs": {"text": payload.get("negative_prompt", ""), "clip": clip_source},
         },
         "4": {
             "class_type": "EmptyLatentImage",
@@ -255,6 +281,34 @@ async def txt2img(request):
             "inputs": {"filename_prefix": "a1111_api", "images": ["6", 0]},
         },
     }
+    if clip_skip > 1:
+        workflow["8"] = {
+            "class_type": "CLIPSetLastLayer",
+            "inputs": {
+                "clip": ["1", 1],
+                "stop_at_clip_layer": -clip_skip,
+            },
+        }
+        workflow["2"]["inputs"]["clip"] = ["8", 0]
+        workflow["3"]["inputs"]["clip"] = ["8", 0]
+
+    logging.info(
+        "[A1111 API] txt2img checkpoint=%r prompt_chars=%d negative_chars=%d "
+        "size=%dx%d steps=%d cfg=%s seed=%d sampler=%s scheduler=%s clip_skip=%d "
+        "batch=%d",
+        checkpoint,
+        len(payload.get("prompt", "")),
+        len(payload.get("negative_prompt", "")),
+        workflow["4"]["inputs"]["width"],
+        workflow["4"]["inputs"]["height"],
+        workflow["5"]["inputs"]["steps"],
+        workflow["5"]["inputs"]["cfg"],
+        seed,
+        sampler,
+        scheduler,
+        clip_skip,
+        workflow["4"]["inputs"]["batch_size"],
+    )
 
     async with ClientSession() as session:
         queued = await _json(

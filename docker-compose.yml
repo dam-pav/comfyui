@@ -102,7 +102,8 @@ services:
           cp -a /opt/bundled_custom_nodes/comfyui_a1111_api /opt/ComfyUI/custom_nodes/
           echo ">>> A1111 API compatibility shim installed"
         else
-          echo ">>> A1111 API compatibility shim already present"
+          cp -a /opt/bundled_custom_nodes/comfyui_a1111_api/. /opt/ComfyUI/custom_nodes/comfyui_a1111_api/
+          echo ">>> A1111 API compatibility shim updated"
         fi
 
         MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal}
