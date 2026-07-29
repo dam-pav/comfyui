@@ -86,33 +86,15 @@ def _model_record(name):
     }
 
 
-def _clean_setting(value, setting_name):
-    if not isinstance(value, str):
-        value = str(value)
-    cleaned = value.strip().rstrip("=").strip()
-    if cleaned != value:
-        logging.warning(
-            "[A1111 API] normalized %s from %r to %r",
-            setting_name,
-            value,
-            cleaned,
-        )
-    return cleaned
-
-
 def _resolve_sampler(payload):
-    label = _clean_setting(
-        (
-            os.getenv("A1111_API_SAMPLER")
-            or payload.get("sampler_name")
-            or payload.get("sampler_index")
-            or "Euler"
-        ),
-        "sampler",
+    label = str(
+        os.getenv("A1111_API_SAMPLER")
+        or payload.get("sampler_name")
+        or payload.get("sampler_index")
+        or "Euler"
     )
-    scheduler_label = _clean_setting(
-        str(os.getenv("A1111_API_SCHEDULER") or payload.get("scheduler", "")),
-        "scheduler",
+    scheduler_label = str(
+        os.getenv("A1111_API_SCHEDULER") or payload.get("scheduler", "")
     ).lower()
 
     # A1111 historically encodes the scheduler in the sampler display name.
@@ -299,7 +281,13 @@ async def txt2img(request):
         seed = random.randrange(0, 2**63)
     clip_skip = int(payload.get("clip_skip", 1) or 1)
     clip_source = ["1", 1]
-    prompt_mode = os.getenv("A1111_API_PROMPT_MODE", "a1111").lower()
+    prompt_mode = os.getenv("A1111_API_PROMPT_MODE", "comfy").lower()
+    if prompt_mode not in {"comfy", "a1111"}:
+        logging.warning(
+            "[A1111 API] unsupported prompt mode %r; using 'comfy'",
+            prompt_mode,
+        )
+        prompt_mode = "comfy"
     normalize_prompt_weights = (
         os.getenv("A1111_API_PROMPT_NORMALIZATION", "true").lower()
         in {"1", "true", "yes", "on"}
@@ -395,7 +383,7 @@ async def txt2img(request):
         clip_skip,
         workflow["4"]["inputs"]["batch_size"],
         prompt_mode,
-        normalize_prompt_weights,
+        normalize_prompt_weights if prompt_mode == "a1111" else "n/a",
     )
 
     async with ClientSession() as session:

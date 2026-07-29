@@ -68,9 +68,10 @@ The script configures Docker to use the NVIDIA runtime and validates GPU access 
 	- Forces a ComfyUI scheduler such as `karras`, `normal`, or `exponential`.
 	  Empty by default, which respects a client value or a suffix such as
 	  `DPM++ 2M Karras`.
-- `A1111_API_PROMPT_MODE` (optional, default `a1111`)
-	- Uses A1111-compatible prompt parsing and conditioning. Set to `comfy` to
-	  restore native `CLIPTextEncode` behavior.
+- `A1111_API_PROMPT_MODE` (optional, default `comfy`)
+	- Uses native `CLIPTextEncode`, including explicit weights such as
+	  `(bright:1.8)`, so API requests match an equivalent basic ComfyUI workflow.
+	  Set to `a1111` to opt into A1111-specific conditioning semantics.
 - `A1111_API_PROMPT_NORMALIZATION` (optional, default `true`)
 	- Enables A1111-style mean normalization for weighted prompts. Set to
 	  `false` for A1111 “No norm” behavior, which may suit some SDXL models.
@@ -110,7 +111,7 @@ The response uses the A1111 `images`, `parameters`, and `info` shape, with
 generated images returned as base64-encoded PNG data. The compatibility layer
 supports prompts, negative prompts, dimensions, steps, CFG scale, seeds,
 batching, clip skip, and common A1111 sampler/scheduler names. Each request logs
-its resolved parameters without logging the prompt text. A1111 prompt mode
+its resolved parameters without logging the prompt text. Optional A1111 prompt mode
 supports explicit weights such as `(bright:1.8)`, shorthand emphasis, `BREAK`,
 scheduling, and alternation using the bundled
 [`ComfyUI-A1111-cond`](https://github.com/Enferlain/ComfyUI-A1111-cond) node.
