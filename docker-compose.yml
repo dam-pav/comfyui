@@ -111,12 +111,20 @@ services:
         fi
 
         echo ">>> Ensuring A1111 prompt conditioning is present"
-        if [ ! -d /opt/ComfyUI/custom_nodes/ComfyUI-A1111-cond ]; then
-          cp -a /opt/bundled_custom_nodes/ComfyUI-A1111-cond /opt/ComfyUI/custom_nodes/
+        A1111_PROMPT_DIR=/opt/ComfyUI/custom_nodes/ComfyUI-A1111-cond
+        A1111_PROMPT_BUNDLE=/opt/bundled_custom_nodes/ComfyUI-A1111-cond
+        A1111_PROMPT_COMMIT=070723c767ed5bf38a5aae84fe060f34de1263dc
+        if [ -d "$$A1111_PROMPT_BUNDLE" ]; then
+          mkdir -p "$$A1111_PROMPT_DIR"
+          cp -a "$$A1111_PROMPT_BUNDLE"/. "$$A1111_PROMPT_DIR"/
+          echo ">>> A1111 prompt conditioning installed from image"
+        elif [ ! -d "$$A1111_PROMPT_DIR" ]; then
+          echo ">>> Bundled A1111 prompt conditioning not found; installing pinned revision"
+          git clone https://github.com/Enferlain/ComfyUI-A1111-cond.git "$$A1111_PROMPT_DIR"
+          git -C "$$A1111_PROMPT_DIR" checkout "$$A1111_PROMPT_COMMIT"
           echo ">>> A1111 prompt conditioning installed"
         else
-          cp -a /opt/bundled_custom_nodes/ComfyUI-A1111-cond/. /opt/ComfyUI/custom_nodes/ComfyUI-A1111-cond/
-          echo ">>> A1111 prompt conditioning updated"
+          echo ">>> Existing A1111 prompt conditioning preserved"
         fi
 
         MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal}

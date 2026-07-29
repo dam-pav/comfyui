@@ -78,9 +78,13 @@ jobs:
 
           PREV_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
             --format='{{ index .Config.Labels "upstream.sha" }}' 2>/dev/null || true)
+          PREV_SOURCE_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
+            --format='{{ index .Config.Labels "source.sha" }}' 2>/dev/null || true)
 
           echo "Previous SHA: ${PREV_SHA:-<none>}"
+          echo "Previous source SHA: ${PREV_SOURCE_SHA:-<none>}"
           echo "sha=${PREV_SHA:-}" >> "$GITHUB_OUTPUT"
+          echo "source_sha=${PREV_SOURCE_SHA:-}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build
         id: decide
@@ -89,6 +93,8 @@ jobs:
 
           UP="${{ steps.upstream.outputs.sha }}"
           PREV="${{ steps.previous.outputs.sha }}"
+          SOURCE="${{ github.sha }}"
+          PREV_SOURCE="${{ steps.previous.outputs.source_sha }}"
 
           if [ -z "$PREV" ]; then
             echo "No previous build detected – building"
@@ -96,12 +102,15 @@ jobs:
             exit 0
           fi
 
-          if [ "$UP" = "$PREV" ]; then
-            echo "No upstream changes detected – skipping build"
-            echo "build=false" >> "$GITHUB_OUTPUT"
-          else
+          if [ "$SOURCE" != "$PREV_SOURCE" ]; then
+            echo "Repository source changed – build required"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          elif [ "$UP" != "$PREV" ]; then
             echo "Upstream changed – build required"
             echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No source or upstream changes detected – skipping build"
+            echo "build=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up QEMU (optional, for multi-arch)
@@ -135,6 +144,7 @@ jobs:
             upstream.repo=${{ env.UPSTREAM_REPO }}
             upstream.branch=${{ steps.upstream.outputs.branch }}
             upstream.sha=${{ steps.upstream.outputs.sha }}
+            source.sha=${{ github.sha }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
