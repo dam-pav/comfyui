@@ -1,9 +1,11 @@
 import asyncio
 import base64
+import hashlib
 import json
 import logging
 import os
 import random
+import re
 
 from aiohttp import ClientSession, web
 from server import PromptServer
@@ -46,6 +48,9 @@ SCHEDULERS = {
 
 _active_prompt_id = None
 _selected_checkpoint = None
+EXPLICIT_WEIGHT_PATTERN = re.compile(
+    r"\([^():]+:-?(?:\d+(?:\.\d*)?|\.\d+)\)"
+)
 
 
 def _origin(request):
@@ -368,11 +373,15 @@ async def txt2img(request):
 
     logging.info(
         "[A1111 API] txt2img checkpoint=%r prompt_chars=%d negative_chars=%d "
+        "prompt_sha256=%s negative_sha256=%s "
         "size=%dx%d steps=%d cfg=%s seed=%d sampler=%s scheduler=%s clip_skip=%d "
-        "batch=%d prompt_mode=%s normalization=%s",
+        "batch=%d prompt_mode=%s positive_encoder=%s negative_encoder=%s "
+        "normalization=%s positive_explicit_weights=%d negative_explicit_weights=%d",
         checkpoint,
         len(payload.get("prompt", "")),
         len(payload.get("negative_prompt", "")),
+        hashlib.sha256(payload.get("prompt", "").encode()).hexdigest()[:16],
+        hashlib.sha256(payload.get("negative_prompt", "").encode()).hexdigest()[:16],
         workflow["4"]["inputs"]["width"],
         workflow["4"]["inputs"]["height"],
         workflow["5"]["inputs"]["steps"],
@@ -383,7 +392,11 @@ async def txt2img(request):
         clip_skip,
         workflow["4"]["inputs"]["batch_size"],
         prompt_mode,
+        positive_node,
+        negative_node,
         normalize_prompt_weights if prompt_mode == "a1111" else "n/a",
+        len(EXPLICIT_WEIGHT_PATTERN.findall(payload.get("prompt", ""))),
+        len(EXPLICIT_WEIGHT_PATTERN.findall(payload.get("negative_prompt", ""))),
     )
 
     async with ClientSession() as session:
