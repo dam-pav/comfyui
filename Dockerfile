@@ -5,6 +5,8 @@ ARG COMFYUI_REPO=https://github.com/Comfy-Org/ComfyUI.git
 ARG COMFYUI_BRANCH=v0.28.0
 ARG COMFYUI_MANAGER_REPO=https://github.com/Comfy-Org/ComfyUI-Manager.git
 ARG COMFYUI_MANAGER_BRANCH=main
+ARG A1111_PROMPT_REPO=https://github.com/Enferlain/ComfyUI-A1111-cond.git
+ARG A1111_PROMPT_COMMIT=070723c767ed5bf38a5aae84fe060f34de1263dc
 ARG PYTORCH_VERSION=2.10.0
 ARG TORCHVISION_VERSION=0.25.0
 ARG TORCHAUDIO_VERSION=2.10.0
@@ -32,6 +34,13 @@ WORKDIR /opt/ComfyUI
 # compose startup can install it even when users persist that directory.
 COPY custom_nodes/comfyui_a1111_api /opt/bundled_custom_nodes/comfyui_a1111_api
 COPY custom_nodes/comfyui_a1111_api /opt/ComfyUI/custom_nodes/comfyui_a1111_api
+
+# Add A1111-compatible prompt parsing and conditioning. Pin the revision so
+# image rebuilds do not silently change prompt semantics.
+RUN git clone ${A1111_PROMPT_REPO} /opt/bundled_custom_nodes/ComfyUI-A1111-cond \
+ && git -C /opt/bundled_custom_nodes/ComfyUI-A1111-cond checkout ${A1111_PROMPT_COMMIT} \
+ && rm -rf /opt/bundled_custom_nodes/ComfyUI-A1111-cond/.git \
+ && cp -a /opt/bundled_custom_nodes/ComfyUI-A1111-cond custom_nodes/
 
 # Bundle ComfyUI-Manager for image users who do not mount custom_nodes
 RUN git clone --depth=1 -b ${COMFYUI_MANAGER_BRANCH} ${COMFYUI_MANAGER_REPO} custom_nodes/ComfyUI-Manager
@@ -62,6 +71,7 @@ RUN /opt/ComfyUI/venv/bin/python -m pip install -r requirements.txt \
 RUN /opt/ComfyUI/venv/bin/python -m pip install \
       diffusers \
       gitpython \
+      lark \
       opencv-python-headless \
       av \
       imageio-ffmpeg \

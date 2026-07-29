@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import logging
+import os
 import random
 
 from aiohttp import ClientSession, web
@@ -86,8 +87,15 @@ def _model_record(name):
 
 
 def _resolve_sampler(payload):
-    label = payload.get("sampler_name") or payload.get("sampler_index") or "Euler"
-    scheduler_label = str(payload.get("scheduler", "")).lower()
+    label = (
+        os.getenv("A1111_API_SAMPLER")
+        or payload.get("sampler_name")
+        or payload.get("sampler_index")
+        or "Euler"
+    )
+    scheduler_label = str(
+        os.getenv("A1111_API_SCHEDULER") or payload.get("scheduler", "")
+    ).lower()
 
     # A1111 historically encodes the scheduler in the sampler display name.
     for suffix, scheduler_name in (
@@ -232,6 +240,25 @@ async def txt2img(request):
         seed = random.randrange(0, 2**63)
     clip_skip = int(payload.get("clip_skip", 1) or 1)
     clip_source = ["1", 1]
+    prompt_mode = os.getenv("A1111_API_PROMPT_MODE", "a1111").lower()
+    normalize_prompt_weights = (
+        os.getenv("A1111_API_PROMPT_NORMALIZATION", "true").lower()
+        in {"1", "true", "yes", "on"}
+    )
+    positive_node = "A1111Prompt" if prompt_mode == "a1111" else "CLIPTextEncode"
+    negative_node = (
+        "A1111PromptNegative" if prompt_mode == "a1111" else "CLIPTextEncode"
+    )
+    positive_inputs = {"text": payload.get("prompt", ""), "clip": clip_source}
+    negative_inputs = {
+        "text": payload.get("negative_prompt", ""),
+        "clip": clip_source,
+    }
+    if prompt_mode == "a1111":
+        positive_inputs["normalization"] = normalize_prompt_weights
+        positive_inputs["debug"] = False
+        negative_inputs["normalization"] = normalize_prompt_weights
+        negative_inputs["debug"] = False
 
     workflow = {
         "1": {
@@ -239,12 +266,12 @@ async def txt2img(request):
             "inputs": {"ckpt_name": checkpoint},
         },
         "2": {
-            "class_type": "CLIPTextEncode",
-            "inputs": {"text": payload.get("prompt", ""), "clip": clip_source},
+            "class_type": positive_node,
+            "inputs": positive_inputs,
         },
         "3": {
-            "class_type": "CLIPTextEncode",
-            "inputs": {"text": payload.get("negative_prompt", ""), "clip": clip_source},
+            "class_type": negative_node,
+            "inputs": negative_inputs,
         },
         "4": {
             "class_type": "EmptyLatentImage",
@@ -295,7 +322,7 @@ async def txt2img(request):
     logging.info(
         "[A1111 API] txt2img checkpoint=%r prompt_chars=%d negative_chars=%d "
         "size=%dx%d steps=%d cfg=%s seed=%d sampler=%s scheduler=%s clip_skip=%d "
-        "batch=%d",
+        "batch=%d prompt_mode=%s normalization=%s",
         checkpoint,
         len(payload.get("prompt", "")),
         len(payload.get("negative_prompt", "")),
@@ -308,6 +335,8 @@ async def txt2img(request):
         scheduler,
         clip_skip,
         workflow["4"]["inputs"]["batch_size"],
+        prompt_mode,
+        normalize_prompt_weights,
     )
 
     async with ClientSession() as session:

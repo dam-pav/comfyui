@@ -79,6 +79,10 @@ services:
       TZ: Europe/Ljubljana
       NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
       COMFYUI_MANAGER_SECURITY_LEVEL: ${COMFYUI_MANAGER_SECURITY_LEVEL:-}
+      A1111_API_SAMPLER: ${A1111_API_SAMPLER:-}
+      A1111_API_SCHEDULER: ${A1111_API_SCHEDULER:-}
+      A1111_API_PROMPT_MODE: ${A1111_API_PROMPT_MODE:-a1111}
+      A1111_API_PROMPT_NORMALIZATION: ${A1111_API_PROMPT_NORMALIZATION:-true}
 
     command:
       - /bin/bash
@@ -104,6 +108,15 @@ services:
         else
           cp -a /opt/bundled_custom_nodes/comfyui_a1111_api/. /opt/ComfyUI/custom_nodes/comfyui_a1111_api/
           echo ">>> A1111 API compatibility shim updated"
+        fi
+
+        echo ">>> Ensuring A1111 prompt conditioning is present"
+        if [ ! -d /opt/ComfyUI/custom_nodes/ComfyUI-A1111-cond ]; then
+          cp -a /opt/bundled_custom_nodes/ComfyUI-A1111-cond /opt/ComfyUI/custom_nodes/
+          echo ">>> A1111 prompt conditioning installed"
+        else
+          cp -a /opt/bundled_custom_nodes/ComfyUI-A1111-cond/. /opt/ComfyUI/custom_nodes/ComfyUI-A1111-cond/
+          echo ">>> A1111 prompt conditioning updated"
         fi
 
         MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal}
