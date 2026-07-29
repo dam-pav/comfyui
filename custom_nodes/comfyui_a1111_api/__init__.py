@@ -398,6 +398,20 @@ async def txt2img(request):
         len(EXPLICIT_WEIGHT_PATTERN.findall(payload.get("prompt", ""))),
         len(EXPLICIT_WEIGHT_PATTERN.findall(payload.get("negative_prompt", ""))),
     )
+    if os.getenv("A1111_API_LOG_PROMPTS", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        logging.info(
+            "[A1111 API] received positive prompt: %r",
+            payload.get("prompt", ""),
+        )
+        logging.info(
+            "[A1111 API] received negative prompt: %r",
+            payload.get("negative_prompt", ""),
+        )
 
     async with ClientSession() as session:
         queued = await _json(

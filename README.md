@@ -75,6 +75,10 @@ The script configures Docker to use the NVIDIA runtime and validates GPU access 
 - `A1111_API_PROMPT_NORMALIZATION` (optional, default `true`)
 	- Enables A1111-style mean normalization for weighted prompts. Set to
 	  `false` for A1111 “No norm” behavior, which may suit some SDXL models.
+- `A1111_API_LOG_PROMPTS` (optional, default `false`)
+	- Logs the exact positive and negative prompts received through the A1111
+	  API. Enable temporarily for troubleshooting; prompts may contain private
+	  conversation details.
 - `WATCHTOWER` (optional, default `false`): controls the `com.centurylinklabs.watchtower.enable` label; set to `true` to allow Watchtower detection when used.
 - `CUSTOM_LABEL` (optional, default `foo=bar`): additional label value you can use for whatever reason. Remember, you can only define one single label, no more.
 
