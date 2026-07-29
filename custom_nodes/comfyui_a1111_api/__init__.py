@@ -86,15 +86,33 @@ def _model_record(name):
     }
 
 
+def _clean_setting(value, setting_name):
+    if not isinstance(value, str):
+        value = str(value)
+    cleaned = value.strip().rstrip("=").strip()
+    if cleaned != value:
+        logging.warning(
+            "[A1111 API] normalized %s from %r to %r",
+            setting_name,
+            value,
+            cleaned,
+        )
+    return cleaned
+
+
 def _resolve_sampler(payload):
-    label = (
-        os.getenv("A1111_API_SAMPLER")
-        or payload.get("sampler_name")
-        or payload.get("sampler_index")
-        or "Euler"
+    label = _clean_setting(
+        (
+            os.getenv("A1111_API_SAMPLER")
+            or payload.get("sampler_name")
+            or payload.get("sampler_index")
+            or "Euler"
+        ),
+        "sampler",
     )
-    scheduler_label = str(
-        os.getenv("A1111_API_SCHEDULER") or payload.get("scheduler", "")
+    scheduler_label = _clean_setting(
+        str(os.getenv("A1111_API_SCHEDULER") or payload.get("scheduler", "")),
+        "scheduler",
     ).lower()
 
     # A1111 historically encodes the scheduler in the sampler display name.
@@ -111,6 +129,46 @@ def _resolve_sampler(payload):
     sampler = SAMPLERS.get(label, label)
     scheduler = SCHEDULERS.get(scheduler_label or "normal", scheduler_label or "normal")
     return sampler, scheduler
+
+
+async def _validate_sampler(request, sampler, scheduler):
+    async with ClientSession() as session:
+        info = await _json(
+            session,
+            "GET",
+            f"{_origin(request)}/object_info/KSampler",
+        )
+    required = info["KSampler"]["input"]["required"]
+    allowed_samplers = required["sampler_name"][0]
+    allowed_schedulers = required["scheduler"][0]
+    errors = []
+    if sampler not in allowed_samplers:
+        errors.append(
+            {
+                "parameter": "sampler_name",
+                "value": sampler,
+                "allowed": allowed_samplers,
+            }
+        )
+    if scheduler not in allowed_schedulers:
+        errors.append(
+            {
+                "parameter": "scheduler",
+                "value": scheduler,
+                "allowed": allowed_schedulers,
+            }
+        )
+    if errors:
+        logging.error("[A1111 API] invalid sampler settings: %s", errors)
+        raise web.HTTPBadRequest(
+            text=json.dumps(
+                {
+                    "error": "Invalid sampler configuration",
+                    "details": errors,
+                }
+            ),
+            content_type="application/json",
+        )
 
 
 @routes.get("/sdapi/v1/sd-models")
@@ -235,6 +293,7 @@ async def txt2img(request):
 
     sampler_label = payload.get("sampler_name") or payload.get("sampler_index") or "Euler"
     sampler, scheduler = _resolve_sampler(payload)
+    await _validate_sampler(request, sampler, scheduler)
     seed = int(payload.get("seed", -1))
     if seed < 0:
         seed = random.randrange(0, 2**63)
