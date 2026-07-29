@@ -43,7 +43,11 @@ The script configures Docker to use the NVIDIA runtime and validates GPU access 
 
 - `COMFYUI_PATH` (required)
 	- Absolute path on the host where ComfyUI data will live.
-	- The compose file will use subfolders of this path for `user`, `custom_nodes`, `models`, `input`, and `output`.
+	- The compose file will use shared subfolders of this path for `user`,
+	  `custom_nodes`, `models`, `input`, and `output`.
+	- Each GPU instance uses a separate SQLite file in the shared user folder:
+	  `comfyui-gpu<device-id>.db`. This avoids ComfyUI's exclusive database
+	  lock while keeping user settings and configuration shared.
 
 - `COMFYUI_GPU_DEVICE_ID` (optional, default `0`)
 	- Selects which GPU the container uses (as seen by Docker/NVIDIA).

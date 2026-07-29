@@ -181,6 +181,7 @@ services:
         exec python main.py \
           --listen 0.0.0.0 \
           --port 8188 \
+          --database-url "sqlite:////opt/ComfyUI/user/comfyui-gpu${COMFYUI_GPU_DEVICE_ID:-0}.db" \
           --enable-cors-header "*"
 
     volumes:
