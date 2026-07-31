@@ -79,11 +79,7 @@ services:
       TZ: Europe/Ljubljana
       NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
       COMFYUI_MANAGER_SECURITY_LEVEL: ${COMFYUI_MANAGER_SECURITY_LEVEL:-}
-      A1111_API_SAMPLER: ${A1111_API_SAMPLER:-}
-      A1111_API_SCHEDULER: ${A1111_API_SCHEDULER:-}
-      A1111_API_PROMPT_MODE: ${A1111_API_PROMPT_MODE:-comfy}
-      A1111_API_PROMPT_NORMALIZATION: ${A1111_API_PROMPT_NORMALIZATION:-true}
-      A1111_API_LOG_PROMPTS: ${A1111_API_LOG_PROMPTS:-false}
+      COMFYUI_LOG_API_REQUESTS: ${COMFYUI_LOG_API_REQUESTS:-false}
 
     command:
       - /bin/bash
@@ -102,30 +98,23 @@ services:
           echo ">>> ComfyUI-Manager already present"
         fi
 
-        echo ">>> Ensuring the A1111 API compatibility shim is present"
-        if [ ! -d /opt/ComfyUI/custom_nodes/comfyui_a1111_api ]; then
-          cp -a /opt/bundled_custom_nodes/comfyui_a1111_api /opt/ComfyUI/custom_nodes/
-          echo ">>> A1111 API compatibility shim installed"
-        else
-          cp -a /opt/bundled_custom_nodes/comfyui_a1111_api/. /opt/ComfyUI/custom_nodes/comfyui_a1111_api/
-          echo ">>> A1111 API compatibility shim updated"
-        fi
+        echo ">>> Retiring obsolete A1111 compatibility nodes"
+        for node in comfyui_a1111_api ComfyUI-A1111-cond; do
+          node_path=/opt/ComfyUI/custom_nodes/$$node
+          disabled_path=$$node_path.disabled
+          if [ -e "$$node_path" ] && [ ! -e "$$disabled_path" ]; then
+            mv "$$node_path" "$$disabled_path"
+            echo ">>> Disabled obsolete custom node: $$node"
+          fi
+        done
 
-        echo ">>> Ensuring A1111 prompt conditioning is present"
-        A1111_PROMPT_DIR=/opt/ComfyUI/custom_nodes/ComfyUI-A1111-cond
-        A1111_PROMPT_BUNDLE=/opt/bundled_custom_nodes/ComfyUI-A1111-cond
-        A1111_PROMPT_COMMIT=070723c767ed5bf38a5aae84fe060f34de1263dc
-        if [ -d "$$A1111_PROMPT_BUNDLE" ]; then
-          mkdir -p "$$A1111_PROMPT_DIR"
-          cp -a "$$A1111_PROMPT_BUNDLE"/. "$$A1111_PROMPT_DIR"/
-          echo ">>> A1111 prompt conditioning installed from image"
-        elif [ ! -d "$$A1111_PROMPT_DIR" ]; then
-          echo ">>> Bundled A1111 prompt conditioning not found; installing pinned revision"
-          git clone https://github.com/Enferlain/ComfyUI-A1111-cond.git "$$A1111_PROMPT_DIR"
-          git -C "$$A1111_PROMPT_DIR" checkout "$$A1111_PROMPT_COMMIT"
-          echo ">>> A1111 prompt conditioning installed"
+        echo ">>> Ensuring native API request logging is present"
+        if [ ! -d /opt/ComfyUI/custom_nodes/comfyui_native_api_logging ]; then
+          cp -a /opt/bundled_custom_nodes/comfyui_native_api_logging /opt/ComfyUI/custom_nodes/
+          echo ">>> Native API request logging installed"
         else
-          echo ">>> Existing A1111 prompt conditioning preserved"
+          cp -a /opt/bundled_custom_nodes/comfyui_native_api_logging/. /opt/ComfyUI/custom_nodes/comfyui_native_api_logging/
+          echo ">>> Native API request logging updated"
         fi
 
         MANAGER_SECURITY_LEVEL=$${COMFYUI_MANAGER_SECURITY_LEVEL:-normal}
