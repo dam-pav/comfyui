@@ -33,6 +33,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python for upstream template detection
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Detect upstream default branch
         id: upstream
         run: |
