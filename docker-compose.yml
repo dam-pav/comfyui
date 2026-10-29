@@ -5,6 +5,7 @@
 # COMFYUI_GPU_DEVICE_ID=<gpu_device_id>
 # COMFYUI_PORT=<port_number>
 # COMPOSE_PROFILES=kjnodes  # to enable KJNodes init container
+# COMFYUI_UPDATE_CUSTOM_NODES=false  # disable automatic custom-node updates
 
 version: "3.9"
 
@@ -80,6 +81,7 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
       COMFYUI_MANAGER_SECURITY_LEVEL: ${COMFYUI_MANAGER_SECURITY_LEVEL:-}
       COMFYUI_LOG_API_REQUESTS: ${COMFYUI_LOG_API_REQUESTS:-false}
+      COMFYUI_UPDATE_CUSTOM_NODES: ${COMFYUI_UPDATE_CUSTOM_NODES:-true}
 
     command:
       - /bin/bash
@@ -89,6 +91,10 @@ services:
 
         . /opt/ComfyUI/venv/bin/activate
         pip install --no-cache-dir --upgrade pip
+
+        # Serialize startup changes to the shared custom_nodes volume across GPUs.
+        exec 9>/opt/ComfyUI/custom_nodes/.startup.lock
+        flock 9
 
         echo ">>> Ensuring ComfyUI-Manager is present"
         if [ ! -d /opt/ComfyUI/custom_nodes/ComfyUI-Manager ]; then
@@ -137,6 +143,8 @@ services:
           echo ">>> Existing $$MANAGER_CONFIG_FILE preserved"
         fi
 
+        bash /opt/comfyui/update-custom-nodes.sh
+
         echo ">>> Installing custom node requirements"
         for dir in /opt/ComfyUI/custom_nodes/*; do
           if [ -f "$$dir/requirements.txt" ]; then
@@ -166,6 +174,9 @@ services:
         else
           echo ">>> Qwen-TTS not present — skipping audio + HF deps override"
         fi
+
+        flock -u 9
+        exec 9>&-
 
         exec python main.py \
           --listen 0.0.0.0 \

@@ -1,8 +1,20 @@
+# syntax=docker/dockerfile:1
+
+# BuildKit resolves Git sources on each build, including cached local builds.
+FROM scratch AS comfyui_source
+
+ARG COMFYUI_REPO=https://github.com/Comfy-Org/ComfyUI.git
+ARG COMFYUI_BRANCH
+ARG COMFYUI_SHA
+ADD --keep-git-dir=true ${COMFYUI_REPO}#${COMFYUI_SHA:-${COMFYUI_BRANCH}} /ComfyUI/
+
+# Remote ADD rechecks release metadata so template-only updates invalidate cache.
+FROM scratch AS template_release
+ARG COMFYUI_TEMPLATES_VERSION
+ADD https://pypi.org/pypi/comfyui-workflow-templates/${COMFYUI_TEMPLATES_VERSION:+${COMFYUI_TEMPLATES_VERSION}/}json /release.json
+
 FROM python:3.12-slim
 
-# Use the official ComfyUI repo
-ARG COMFYUI_REPO=https://github.com/Comfy-Org/ComfyUI.git
-ARG COMFYUI_BRANCH=v0.28.0
 ARG COMFYUI_MANAGER_REPO=https://github.com/Comfy-Org/ComfyUI-Manager.git
 ARG COMFYUI_MANAGER_BRANCH=main
 ARG PYTORCH_VERSION=2.10.0
@@ -14,6 +26,7 @@ ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu126
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
+    util-linux \
     build-essential \
     ffmpeg \
     sox \
@@ -23,8 +36,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /opt
 
-# Clone official ComfyUI
-RUN git clone --depth=1 -b ${COMFYUI_BRANCH} ${COMFYUI_REPO} ComfyUI
+# Local builds follow upstream HEAD; CI supplies its detected immutable commit.
+COPY --from=comfyui_source /ComfyUI /opt/ComfyUI
+ARG COMFYUI_SHA
+RUN if [ -n "${COMFYUI_SHA}" ]; then \
+      test "$(git -C /opt/ComfyUI rev-parse HEAD)" = "${COMFYUI_SHA}"; \
+    fi
 
 WORKDIR /opt/ComfyUI
 
@@ -32,6 +49,7 @@ WORKDIR /opt/ComfyUI
 # compose can install it even when users persist that directory.
 COPY custom_nodes/comfyui_native_api_logging /opt/bundled_custom_nodes/comfyui_native_api_logging
 COPY custom_nodes/comfyui_native_api_logging /opt/ComfyUI/custom_nodes/comfyui_native_api_logging
+COPY scripts/update-custom-nodes.sh /opt/comfyui/update-custom-nodes.sh
 
 # Bundle ComfyUI-Manager for image users who do not mount custom_nodes
 RUN git clone --depth=1 -b ${COMFYUI_MANAGER_BRANCH} ${COMFYUI_MANAGER_REPO} custom_nodes/ComfyUI-Manager
@@ -80,3 +98,13 @@ RUN /opt/ComfyUI/venv/bin/python -m pip install --no-cache-dir \
       -r /tmp/kjnodes-requirements.txt \
  && rm /tmp/kjnodes-requirements.txt \
  && /opt/ComfyUI/venv/bin/python -m pip cache purge
+
+# Template-only updates reuse the dependency layers above. Install last so
+# custom-node build dependencies cannot overwrite the selected template version.
+COPY scripts/resolve-template-version.sh /opt/comfyui/resolve-template-version.sh
+COPY --from=template_release /release.json /tmp/comfyui-template-release.json
+RUN TEMPLATE_VERSION=$(bash /opt/comfyui/resolve-template-version.sh /tmp/comfyui-template-release.json) \
+ && python -m pip install --no-cache-dir --upgrade \
+      "comfyui-workflow-templates==${TEMPLATE_VERSION}" \
+ && rm /tmp/comfyui-template-release.json \
+ && python -c 'from importlib.metadata import version; from comfyui_workflow_templates import iter_templates; templates = list(iter_templates()); assert templates, "No workflow templates installed"; print("Workflow templates:", version("comfyui-workflow-templates"), "count:", len(templates))'

@@ -13,6 +13,11 @@ on:
 
   workflow_dispatch: {}
 
+# Builds share the runner's local cache and publish the same latest tag.
+concurrency:
+  group: comfyui-publish-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   build-and-push:
     runs-on: [self-hosted, linux, x64]
@@ -38,7 +43,7 @@ jobs:
 
           SHA=$(git ls-remote "$UPSTREAM_REPO" "refs/heads/$BRANCH" | cut -f1)
 
-          if [ -z "$SHA" ]; then
+          if [ -z "$BRANCH" ] || ! [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "ERROR: Failed to resolve upstream SHA"
             exit 1
           fi
@@ -48,6 +53,14 @@ jobs:
 
           echo "Upstream branch: $BRANCH"
           echo "Upstream SHA: $SHA"
+
+      - name: Detect published workflow templates
+        id: templates
+        run: |
+          set -euo pipefail
+          VERSION=$(bash scripts/resolve-template-version.sh)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Published workflow templates: $VERSION"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -80,14 +93,22 @@ jobs:
             --format='{{ index .Config.Labels "upstream.sha" }}' 2>/dev/null || true)
           PREV_SOURCE_SHA=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
             --format='{{ index .Config.Labels "source.sha" }}' 2>/dev/null || true)
+          PREV_TEMPLATES=$(docker inspect ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
+            --format='{{ index .Config.Labels "templates.version" }}' 2>/dev/null || true)
 
           echo "Previous SHA: ${PREV_SHA:-<none>}"
           echo "Previous source SHA: ${PREV_SOURCE_SHA:-<none>}"
           echo "sha=${PREV_SHA:-}" >> "$GITHUB_OUTPUT"
           echo "source_sha=${PREV_SOURCE_SHA:-}" >> "$GITHUB_OUTPUT"
+          echo "Previous workflow templates: ${PREV_TEMPLATES:-<none>}"
+          echo "templates_version=${PREV_TEMPLATES:-}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build
         id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TEMPLATES: ${{ steps.templates.outputs.version }}
+          PREV_TEMPLATES: ${{ steps.previous.outputs.templates_version }}
         run: |
           set -euo pipefail
 
@@ -95,6 +116,12 @@ jobs:
           PREV="${{ steps.previous.outputs.sha }}"
           SOURCE="${{ github.sha }}"
           PREV_SOURCE="${{ steps.previous.outputs.source_sha }}"
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Manual rebuild requested"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           if [ -z "$PREV" ]; then
             echo "No previous build detected – building"
@@ -108,10 +135,17 @@ jobs:
           elif [ "$UP" != "$PREV" ]; then
             echo "Upstream changed – build required"
             echo "build=true" >> "$GITHUB_OUTPUT"
+          elif [ "$TEMPLATES" != "$PREV_TEMPLATES" ]; then
+            echo "Workflow templates changed – build required"
+            echo "build=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No source or upstream changes detected – skipping build"
+            echo "No source, upstream, or template changes detected – skipping build"
             echo "build=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Test custom-node updates
+        if: steps.decide.outputs.build == 'true'
+        run: bash scripts/test-update-custom-nodes.sh
 
       - name: Set up QEMU (optional, for multi-arch)
         if: steps.decide.outputs.build == 'true'
@@ -139,12 +173,17 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            COMFYUI_REPO=${{ env.UPSTREAM_REPO }}
+            COMFYUI_SHA=${{ steps.upstream.outputs.sha }}
+            COMFYUI_TEMPLATES_VERSION=${{ steps.templates.outputs.version }}
           labels: |
             ${{ steps.meta.outputs.labels }}
             upstream.repo=${{ env.UPSTREAM_REPO }}
             upstream.branch=${{ steps.upstream.outputs.branch }}
             upstream.sha=${{ steps.upstream.outputs.sha }}
             source.sha=${{ github.sha }}
+            templates.version=${{ steps.templates.outputs.version }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 

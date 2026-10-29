@@ -6,8 +6,39 @@ This repository provides a ready-to-use Docker image and a `docker-compose.yml` 
 
 The image targets modern NVIDIA GPUs (RTX 20 series and newer) with Python 3.12,
 PyTorch 2.10, and CUDA 12.6 wheels. ComfyUI async weight offloading uses its
-upstream default. The default ComfyUI source revision is pinned to the stable
-`v0.28.0` release and can be changed with the `COMFYUI_BRANCH` build argument.
+upstream default. Both local and CI builds follow upstream's default branch and
+the latest published workflow templates. CI resolves and pins these inputs before
+building. A plain local build resolves them during the build, and Docker rechecks
+the remote Git source and template release metadata even when using its cache.
+
+CI also checks PyPI for new `comfyui-workflow-templates` releases independently
+of ComfyUI changes. The detected version is installed after the other image
+dependencies and checked for a nonempty template catalog. The image labels
+`upstream.sha` and `templates.version` record the selected source and templates.
+Use `COMFYUI_BRANCH` for a specific branch/tag, `COMFYUI_SHA` for an exact commit,
+and `COMFYUI_TEMPLATES_VERSION` for a specific template package version. These are
+optional overrides for testing older versions.
+
+Build locally with the same defaults as CI:
+
+```bash
+docker build -t comfyui:local .
+```
+
+To test the same ComfyUI source and templates as an already published image,
+read its labels and pass both versions explicitly. This avoids selecting updates
+published since that image was built:
+
+```bash
+docker pull ghcr.io/dam-pav/comfyui:latest
+COMFYUI_TEST_SHA=$(docker image inspect ghcr.io/dam-pav/comfyui:latest \
+  --format '{{ index .Config.Labels "upstream.sha" }}')
+COMFYUI_TEST_TEMPLATES=$(docker image inspect ghcr.io/dam-pav/comfyui:latest \
+  --format '{{ index .Config.Labels "templates.version" }}')
+docker build -t comfyui:local \
+  --build-arg COMFYUI_SHA="$COMFYUI_TEST_SHA" \
+  --build-arg COMFYUI_TEMPLATES_VERSION="$COMFYUI_TEST_TEMPLATES" .
+```
 
 The parameters provide some level of flexibility; you are welcome to clone and modify the compose definition locally as required. You will still be able to pull the image.
 
@@ -55,6 +86,14 @@ The script configures Docker to use the NVIDIA runtime and validates GPU access 
 
 - `COMPOSE_PROFILES` (optional)
   - Set to `kjnodes` to enable the `comfyui_init_kjnodes` init container, which installs or updates ComfyUI-KJNodes in `COMFYUI_PATH/custom_nodes`.
+- `COMFYUI_UPDATE_CUSTOM_NODES` (optional, default `true`)
+  - Fast-forwards installed custom-node Git repositories at each
+    container startup, including their example workflows, before installing
+    their requirements. Locally modified checkouts, detached revisions, disabled
+    nodes, and branches without an upstream are skipped. Update failures stop
+    startup and appear in the container logs. Startup changes to the shared
+    custom-node volume are serialized across GPU containers. Set to `false` to
+    disable automatic custom-node updates.
 - `COMFYUI_MANAGER_SECURITY_LEVEL` (optional)
 	- Overrides the `ComfyUI-Manager` `security_level` written to the persistent user config.
 	- If not set and no manager config exists yet, the compose startup creates one with `security_level = normal`, which matches the current recommended Manager default and allows registered node installs, updates, and restarts.
@@ -122,6 +161,24 @@ docker compose up -d
 ## Keeping containers up to date
 
 Use tools such as `containrrr/watchtower` or `getwud/wud` to auto-update running containers when new images are published.
+
+The daily build checks both the ComfyUI commit and the published template package
+version. A change to either triggers a build; a manual GitHub Actions run also
+requests a build when both are unchanged. The selected commit and template version
+are build arguments, so Docker's cache cannot reuse older source or template layers.
+
+After publishing, pull and recreate the container to load the new image:
+
+```bash
+docker compose pull comfyui
+docker compose up -d comfyui
+```
+
+Official templates come from the image's Python environment. Example workflows
+from custom nodes come from the persistent `custom_nodes` folder, so pulling an
+image alone does not update them. Clean node repositories update automatically
+on startup. Set `COMFYUI_UPDATE_CUSTOM_NODES=false` to manage updates manually.
+Recreate all GPU containers that share the folder after updating custom nodes.
 
 ## Deployment:
 
